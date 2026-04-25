@@ -94,7 +94,7 @@ io.on('connection', (socket) => {
         rooms[code].timers[socket.id] = setInterval(() => {
             const room = rooms[code];
             const player = room?.players[socket.id];
-            if (room && room.gameActive && player && player.autoClickers > 0 && !player.frozen) {
+            if (room && room.gameActive && player && player.id && player.autoClickers > 0 && !player.frozen) {
                 player.score += (player.autoClickers * player.multiplier * player.clickPower);
                 io.to(code).emit('gameState', room.players);
                 checkWin(code);
@@ -358,7 +358,7 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
             let spamCount = 0;
             const totalSpam = 20; // 20 emojis for a real "spam" effect
             const spamInterval = setInterval(() => {
-                if (spamCount >= totalSpam) {
+                if (spamCount >= totalSpam || !room.players[target.id] || !room.gameActive) {
                     clearInterval(spamInterval);
                     return;
                 }

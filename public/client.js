@@ -88,10 +88,33 @@ function playGameOverSound() {
     });
 }
 
+function triggerStaticOverlay(duration) {
+    const staticDiv = document.createElement('div');
+    staticDiv.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: repeating-linear-gradient(0deg, rgba(0,0,0,0.1), rgba(0,0,0,0.1) 1px, transparent 1px, transparent 2px);
+        background-color: rgba(255,255,255,0.05);
+        z-index: 9998; pointer-events: none;
+    `;
+    document.body.appendChild(staticDiv);
+    setTimeout(() => staticDiv.remove(), duration);
+}
+
 function triggerJumpscare(imageUrl, soundUrl) {
     const overlay = document.getElementById('jumpscare-overlay');
     const img = document.getElementById('jumpscare-img');
     if (!overlay || !img) return;
+
+    // Create a screen shake effect
+    const shakeKeyframes = [
+        { transform: 'translate(1px, 1px) rotate(0deg)' },
+        { transform: 'translate(-1px, -2px) rotate(-1deg)' },
+        { transform: 'translate(-3px, 0px) rotate(1deg)' },
+        { transform: 'translate(3px, 2px) rotate(0deg)' },
+        { transform: 'translate(1px, -1px) rotate(1deg)' },
+        { transform: 'translate(-1px, 2px) rotate(-1deg)' },
+        { transform: 'translate(-3px, 1px) rotate(0deg)' }
+    ];
 
     // Load Foxy's scream
     const jumpscareAudio = new Audio(soundUrl);
@@ -104,8 +127,9 @@ function triggerJumpscare(imageUrl, soundUrl) {
     void overlay.offsetWidth;
     overlay.style.opacity = '1';
     overlay.style.transform = 'scale(1.2)';
-    document.body.style.filter = 'invert(1) contrast(2)';
-    setTimeout(() => { document.body.style.filter = 'none'; }, 150);
+    document.body.animate(shakeKeyframes, { duration: 100, iterations: 8 });
+    document.body.style.filter = 'invert(1) contrast(3) grayscale(1)';
+    setTimeout(() => { document.body.style.filter = 'none'; }, 200);
     
     jumpscareAudio.play().catch(e => console.error("Foxy scream blocked or not found:", e));
 
