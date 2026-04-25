@@ -91,7 +91,7 @@ function playGameOverSound() {
 function triggerJumpscare(imageUrl, soundUrl) { // Added parameters
     const overlay = document.getElementById('jumpscare-overlay');
     const img = document.getElementById('jumpscare-img');
-    
+
     // Create a new audio element each time to ensure it plays immediately without overlap issues
     const jumpscareAudio = new Audio(soundUrl);
     jumpscareAudio.volume = 1.0; 
@@ -174,16 +174,17 @@ function joinGame(mode, cardSelector) {
     const card = document.querySelector(cardSelector);
     const playerName = card.querySelector('.name-input').value.trim();
     const roomCode = card.querySelector('.code-input').value.trim().toUpperCase();
-    const duration = card.querySelector('.time-input').value;
+    const durationInput = card.querySelector('.time-input').value;
     const maxPlayers = card.querySelector('.players-input')?.value || 4;
-    
+    const duration = parseInt(durationInput) || 5;
+
     if (playerName && roomCode) {
         currentMode = mode;
         socket.emit('joinRoom', { 
             playerName, 
             roomCode,
             mode,
-            duration: parseInt(duration),
+            duration: duration,
             maxPlayers: parseInt(maxPlayers)
         });
         document.getElementById('current-room').innerText = roomCode;
@@ -200,6 +201,11 @@ document.querySelector('.join-classic').addEventListener('click', () => {
 document.querySelector('.join-team').addEventListener('click', () => {
     initAudio();
     joinGame('teams', '.team-mode-card');
+});
+
+document.querySelector('.join-chaos')?.addEventListener('click', () => {
+    initAudio();
+    joinGame('chaos', '.mode-card:not(.team-mode-card)');
 });
 
 // Start Game logic

@@ -37,11 +37,11 @@ const SHOP_ITEMS = {
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    socket.on('joinRoom', ({ playerName, roomCode, duration, maxPlayers, avatar, cursor }) => {
+    socket.on('joinRoom', ({ playerName, roomCode, mode, duration, maxPlayers, avatar, cursor }) => {
         const code = roomCode.toUpperCase();
 
         if (!rooms[code]) {
-            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4, 'classic');
+            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4, mode || 'classic');
         }
 
         if (Object.keys(rooms[code].players).length >= rooms[code].maxPlayers) {
@@ -182,15 +182,14 @@ io.on('connection', (socket) => {
         console.log('Player disconnected:', socket.id);
     });
 
-    socket.on('createLobby', ({ lobbyName, duration }) => {
+    socket.on('createLobby', ({ lobbyName, duration, mode }) => {
         const code = lobbyName.toUpperCase().replace(/\s+/g, '-');
         if (rooms[code]) {
             socket.emit('error', 'A room with this name already exists.');
             return;
         }
 
-        // Ensure duration defaults to 5 minutes if not provided or 0, preventing timeLeft from being 0 or NaN.
-        initializeRoom(code, (duration || 5) * 60); 
+        initializeRoom(code, (duration || 5) * 60, 4, mode || 'classic'); 
         socket.emit('lobbyCreated', { name: lobbyName, code: code, duration });
         io.to(code).emit('updateTimer', rooms[code].timeLeft); // Send initial timer value to the creator
         console.log(`🚀 Lobby Created: ${code} (${duration}m)`);
@@ -235,10 +234,13 @@ function handlePlayerDisconnect(socket, roomCode) {
 }
 
 function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
+    const finalDuration = (isNaN(durationInSeconds) || durationInSeconds <= 0) ? 300 : durationInSeconds;
+    const eventInterval = (mode === 'chaos') ? 30000 : 60000;
+
     rooms[code] = {
         code: code,
         players: {},
-        timeLeft: durationInSeconds,
+        timeLeft: finalDuration,
         gameActive: false,
         timers: {},
         maxPlayers: parseInt(maxPlayers) || 4,
@@ -248,8 +250,8 @@ function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
     
     // Trigger random event every 1 minute
     rooms[code].timers.randomEventInterval = setInterval(() => {
-        triggerRandomEvent(code);
-    }, 60000);
+        triggerRandomEvent(code, mode === 'chaos');
+    }, eventInterval);
 
     rooms[code].timers.gameTimer = setInterval(() => {
         const room = rooms[code];
@@ -394,11 +396,13 @@ function getItemCost(itemId, owned) {
     return Math.floor(item.baseCost * Math.pow(item.costMultiplier, owned));
 }
 
-function triggerRandomEvent(roomCode) {
+function triggerRandomEvent(roomCode, isChaos) {
     const room = rooms[roomCode];
     if (!room || !room.gameActive || Object.keys(room.players).length === 0) return;
 
-    const eventTypes = ['scoreBoostGlobal', 'scoreDrainGlobal', 'multiplierBoostRandom', 'freezeRandom'];
+    let eventTypes = ['scoreBoostGlobal', 'scoreDrainGlobal', 'multiplierBoostRandom', 'freezeRandom'];
+    if (isChaos) eventTypes = [...eventTypes, 'chaos_equalizer', 'chaos_inflation', 'chaos_freeUpgrade'];
+
     const randomEventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
     const playersArray = Object.values(room.players);
     const randomPlayer = playersArray[Math.floor(Math.random() * playersArray.length)];
@@ -431,6 +435,23 @@ function triggerRandomEvent(roomCode) {
                 randomPlayer.frozenUntil = Date.now() + 10000; // Freeze for 10 seconds
                 message = `${randomPlayer.name} has been frozen!`;
             }
+            break;
+        case 'chaos_equalizer':
+            const avgScore = Math.floor(playersArray.reduce((acc, p) => acc + p.score, 0) / playersArray.length);
+            playersArray.forEach(p => p.score = avgScore);
+            message = `CHAOS: The Great Equalizer! Everyone's score is now ${avgScore}!`;
+            break;
+        case 'chaos_inflation':
+            message = `CHAOS: Hyper-Inflation! Shop costs are temporarily tripled!`;
+            io.to(roomCode).emit('randomEvent', { message, type: 'inflation' });
+            // Client would need a listener to visually show this, but server handles cost logic
+            break;
+        case 'chaos_freeUpgrade':
+            playersArray.forEach(p => {
+                p.autoClickers += 1;
+                p.items['autoClicker'] = (p.items['autoClicker'] || 0) + 1;
+            });
+            message = `CHAOS: A gift from above! Everyone received a free Auto Clicker!`;
             break;
     }
     io.to(roomCode).emit('randomEvent', { message });
