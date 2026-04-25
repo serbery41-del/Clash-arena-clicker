@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click Clash Arena</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="lobby-screen">
+        <div class="lobby-box">
+            <h1>Click Clash Arena</h1>
+            <input type="text" id="playerName" placeholder="Enter Your Name" maxlength="10">
+            <input type="text" id="roomCode" placeholder="Enter Room Code (e.g., FUN123)" maxlength="6">
+            <button id="joinBtn">Create / Join Room</button>
+        </div>
+    </div>
+
+    <div id="game-screen" style="display: none;">
+        <div class="header">
+            <div id="timer">30:00</div>
+            <div id="room-display">Room: <span id="current-room"></span></div>
+        </div>
+
+        <div class="game-container">
+            <div class="side-panel leaderboard-panel">
+                <h2>Leaderboard</h2>
+                <ul id="leaderboard"></ul>
+            </div>
+
+            <div class="center-panel">
+                <div id="click-target" class="gem">
+                    <div class="gem-inner"></div>
+                </div>
+                <h2 id="my-score">Score: 0</h2>
+            </div>
+
+            <div class="side-panel shop-panel">
+                <h2>⚡ Power-Ups</h2>
+                <div id="shop-items">
+                    <button class="shop-btn self-item" data-item="multiplier">
+                        +1 Multiplier<br><span class="cost">Cost: 50</span>
+                    </button>
+                    <button class="shop-btn self-item" data-item="clickPower">
+                        +1 Click Power<br><span class="cost">Cost: 100</span>
+                    </button>
+                    <button class="shop-btn self-item" data-item="autoClicker">
+                        Auto Clicker (1/sec)<br><span class="cost">Cost: 500</span>
+                    </button>
+                    <button class="shop-btn self-item" data-item="luckBoost">
+                        +10% Lucky Hits<br><span class="cost">Cost: 750</span>
+                    </button>
+                </div>
+                
+                <h2 class="troll-header">🎭 Troll Zone</h2>
+                <div id="troll-items">
+                    <button class="shop-btn troll-item" data-item="stealPoints">
+                        Steal 100 pts<br><span class="cost">Cost: 300</span>
+                    </button>
+                    <button class="shop-btn troll-item" data-item="freezeOpponent">
+                        Freeze 5 sec<br><span class="cost">Cost: 400</span>
+                    </button>
+                    <button class="shop-btn troll-item" data-item="swapScores">
+                        Swap Scores<br><span class="cost">Cost: 800</span>
+                    </button>
+                    <button class="shop-btn troll-item" data-item="reduceMultiplier">
+                        -1 Opponent Multi<br><span class="cost">Cost: 600</span>
+                    </button>
+                    <button class="shop-btn troll-item" data-item="spamEmoji">
+                        Spam Emoji<br><span class="cost">Cost: 200</span>
+                    </button>
+                </div>
+                <div class="my-stats">
+                    <p id="my-multiplier">Multiplier: x1</p>
+                    <p id="my-clickPower">Click Power: x1</p>
+                    <p id="my-autoClickers">Auto Clickers: 0</p>
+                    <p id="my-luckChance">Luck: 0%</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-screen" style="display: none;">
+        <div class="lobby-box">
+            <h1>Game Over!</h1>
+            <ul id="final-results"></ul>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
+    </div>
+
+    <div class="shop">
+        <div class="shop-item">
+            <span>Upgrade 1</span>
+            <button class="upgrade-btn">+</button>
+        </div>
+        <div class="shop-item">
+            <span>Troll 1</span>
+            <button class="troll-btn">💀</button>
+        </div>
+        <!-- Add more items dynamically -->
+    </div>
+
+    <div class="lobby">
+        <button id="create-lobby">Create Lobby</button>
+        <button id="join-lobby">Join Lobby</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
