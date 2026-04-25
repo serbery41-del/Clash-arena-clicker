@@ -24,7 +24,7 @@ const SHOP_ITEMS = {
     diamondMine: { name: 'Diamond Mine', type: 'self', baseCost: 10000, costMultiplier: 2.2 },
     steal: { name: 'Steal Points', type: 'troll', effect: 'steal', baseCost: 300, costMultiplier: 1.2 },
     freeze: { name: 'Freeze Opponent', type: 'troll', effect: 'freeze', baseCost: 2000, costMultiplier: 1.6 },
-    swap: { name: 'Swap Scores', type: 'troll', effect: 'swap', baseCost: 5000, costMultiplier: 2.0 },
+    swap: { name: 'Swap Scores', type: 'troll', effect: 'swap', baseCost: 1000000, costMultiplier: 2.0 },
     reduce: { name: 'Reduce Mult', type: 'troll', effect: 'reduce', baseCost: 600, costMultiplier: 1.4 },
     spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 },
     scramble: { name: 'UI Scramble', type: 'troll', effect: 'scramble', baseCost: 500, costMultiplier: 1.5 },
@@ -127,7 +127,7 @@ io.on('connection', (socket) => {
             io.to(socket.roomCode).emit('gameState', room.players);
             checkWin(socket.roomCode);
         } else if (player?.frozen) {
-            socket.emit('frozenMessage', { remaining: Math.ceil((player.frozenUntil - Date.now()) / 1000) });
+            socket.emit('frozenMessage', { remaining: Math.max(0, Math.ceil((player.frozenUntil - Date.now()) / 1000)) });
         }
     });
 
@@ -226,6 +226,11 @@ function handlePlayerDisconnect(socket, roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
+    // Fix: Stop the player's auto-clicker interval to prevent memory leaks/crashes
+    if (room.timers[socket.id]) {
+        clearInterval(room.timers[socket.id]);
+        delete room.timers[socket.id];
+    }
     delete room.players[socket.id];
     
     io.to(roomCode).emit('gameState', room.players);
@@ -315,6 +320,7 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
             setTimeout(() => {
                 if (room.players[target.id]) {
                     room.players[target.id].frozen = false;
+                    io.to(room.code).emit('gameState', room.players); // Update UI after unfreeze
                 }
             }, 3000);
             io.to(room.code).emit('trollEvent', { 
@@ -452,6 +458,12 @@ function triggerRandomEvent(roomCode, isChaos) {
                 randomPlayer.frozen = true;
                 randomPlayer.frozenUntil = Date.now() + 10000; // Freeze for 10 seconds
                 message = `${randomPlayer.name} has been frozen!`;
+                setTimeout(() => {
+                    if (room.players[randomPlayer.id]) {
+                        room.players[randomPlayer.id].frozen = false;
+                        io.to(roomCode).emit('gameState', room.players);
+                    }
+                }, 10000);
             }
             break;
         case 'chaos_equalizer':

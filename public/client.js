@@ -100,10 +100,12 @@ function triggerJumpscare(imageUrl, soundUrl) {
     img.src = imageUrl;
     overlay.style.display = 'flex';
     
-    // Force a reflow and add a slight zoom for Foxy's lunge
+    // Add a flash and shake effect for a better jumpscare
     void overlay.offsetWidth;
     overlay.style.opacity = '1';
-    overlay.style.transform = 'scale(1.1)'; 
+    overlay.style.transform = 'scale(1.2)';
+    document.body.style.filter = 'invert(1) contrast(2)';
+    setTimeout(() => { document.body.style.filter = 'none'; }, 150);
     
     jumpscareAudio.play().catch(e => console.error("Foxy scream blocked or not found:", e));
 
