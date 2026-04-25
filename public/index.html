@@ -54,6 +54,25 @@
                 </div>
                 <button class="join-team primary-btn">Create / Join</button>
             </div>
+
+            <!-- Chaos Mode -->
+            <div class="mode-card chaos-mode-card">
+                <h3>🌀 Chaos Mode</h3>
+                <p>Random events every 30 seconds!</p>
+                <div class="input-group">
+                    <input type="text" class="name-input" placeholder="Your Name" maxlength="12">
+                    <input type="text" class="code-input" placeholder="Room Code" maxlength="4">
+                </div>
+                <div class="mode-settings">
+                    <input type="number" class="time-input" value="5" min="1" max="60" title="Minutes">
+                    <select class="players-input">
+                        <option value="2">2 Players</option>
+                        <option value="4" selected>4 Players</option>
+                        <option value="8">8 Players</option>
+                    </select>
+                </div>
+                <button class="join-chaos primary-btn">Create / Join</button>
+            </div>
         </div>
         
         <p id="lobby-status"></p>
@@ -117,6 +136,9 @@
     <div id="jumpscare-overlay" class="jumpscare-overlay">
         <img id="jumpscare-img" src="" alt="SCARY!">
     </div>
+
+    <!-- Static Overlay -->
+    <div id="static-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: url('https://media.giphy.com/media/oEI9uWU9HdfZ6/giphy.gif'); background-size: cover; opacity: 0.4; z-index: 10001; pointer-events: none;"></div>
 
     <!-- Troll Overlay -->
     <div id="troll-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">

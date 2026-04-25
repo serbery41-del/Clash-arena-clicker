@@ -102,8 +102,8 @@ io.on('connection', (socket) => {
         io.to(code).emit('gameState', rooms[code].players);
         io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
         io.to(code).emit('shopItems', SHOP_ITEMS);
-        // Fix: Ensure timer displays immediately on join
-        socket.emit('updateTimer', rooms[code].timeLeft); 
+        // Fix: Send timer update to everyone in the room to keep it synced in the lobby
+        io.to(code).emit('updateTimer', rooms[code].timeLeft); 
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
 
@@ -410,6 +410,8 @@ function triggerRandomEvent(roomCode, isChaos) {
     const playersArray = Object.values(room.players);
     const randomPlayer = playersArray[Math.floor(Math.random() * playersArray.length)];
 
+    const emojis = ['😂', '🤡', '💀', '🙃', '😎'];
+
     let message = '';
 
     switch (randomEventType) {
@@ -456,12 +458,25 @@ function triggerRandomEvent(roomCode, isChaos) {
             });
             message = `CHAOS: A gift from above! Everyone received a free Auto Clicker!`;
             break;
+        case 'chaos_spam':
+            message = `CHAOS: EMOJI INVASION!`;
+            playersArray.forEach(p => {
+                for(let i=0; i<10; i++) {
+                    setTimeout(() => {
+                        if (rooms[roomCode] && rooms[roomCode].players[p.id]) {
+                            io.to(p.id).emit('trollEvent', { type: 'spam', isTarget: true, emoji: emojis[Math.floor(Math.random() * emojis.length)] });
+                        }
+                    }, i * 100);
+                }
+            });
+            break;
         case 'chaos_goldenFreddy':
             message = `IT'S ME. Golden Freddy has appeared!`;
             io.to(roomCode).emit('trollEvent', {
                 type: 'jumpscare',
                 from: 'SYSTEM',
                 target: 'ALL',
+                showStatic: true,
                 imageUrl: 'https://i.imgur.com/7966mP4.png',
                 soundUrl: 'https://raw.githubusercontent.com/Aris-The-Surge/fnaf-sounds/master/FNaF1/GoldenFreddyScream.mp3'
             });

@@ -110,6 +110,43 @@ function triggerJumpscare(imageUrl, soundUrl) { // Added parameters
         navigator.vibrate([100, 50, 100, 50, 300]);
     }
 
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            img.src = '';
+        }, 500);
+    }, 1200); 
+}
+
+function triggerStaticOverlay(duration = 2000) {
+    const staticOverlay = document.getElementById('static-overlay');
+    if (!staticOverlay) return;
+    
+    staticOverlay.style.display = 'block';
+    setTimeout(() => {
+        staticOverlay.style.display = 'none';
+    }, duration);
+}
+
+function createFloatingEmoji(emoji) {
+    console.log('Creating floating emoji:', emoji); 
+    jumpscareAudio.volume = 1.0; 
+
+    img.src = imageUrl;
+    overlay.style.display = 'flex';
+    
+    // Force a reflow for the transition
+    void overlay.offsetWidth;
+    overlay.style.opacity = '1';
+    
+    jumpscareAudio.play().catch(e => console.error("Error playing jumpscare sound:", e));
+
+    // Extra jarring vibration for mobile users
+    if ("vibrate" in navigator) {
+        navigator.vibrate([100, 50, 100, 50, 300]);
+    }
+
     if (audioCtx) {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -172,6 +209,8 @@ let playerItems = {};
 // 1. Join Room Logic
 function joinGame(mode, cardSelector) {
     const card = document.querySelector(cardSelector);
+    if (!card) return console.error(`Card selector ${cardSelector} not found!`);
+    
     const playerName = card.querySelector('.name-input').value.trim();
     const roomCode = card.querySelector('.code-input').value.trim().toUpperCase();
     const durationInput = card.querySelector('.time-input').value;
@@ -193,17 +232,17 @@ function joinGame(mode, cardSelector) {
     }
 }
 
-document.querySelector('.join-classic').addEventListener('click', () => {
+document.querySelector('.join-classic')?.addEventListener('click', () => {
     initAudio();
     joinGame('classic', '.mode-card:not(.team-mode-card)');
 });
 
-document.querySelector('.join-team').addEventListener('click', () => {
+document.querySelector('.join-team')?.addEventListener('click', () => {
     initAudio();
     joinGame('teams', '.team-mode-card');
 });
 
-document.querySelector('.join-chaos').addEventListener('click', () => {
+document.querySelector('.join-chaos')?.addEventListener('click', () => {
     initAudio();
     joinGame('chaos', '.chaos-mode-card');
 });
@@ -418,7 +457,7 @@ socket.on('trollEvent', (event) => {
         jumpscare: `👻 ${event.from} triggered a jumpscare!`
     };
 
-    if (event.type === 'spam' && event.isTarget) {
+    if ((event.type === 'spam' || event.type === 'chaos_spam') && event.isTarget) {
         createFloatingEmoji(event.emoji);
     }
 
@@ -429,6 +468,9 @@ socket.on('trollEvent', (event) => {
     }
 
     if (event.type === 'jumpscare' && (event.target === socket.id || event.target === 'ALL')) {
+        if (event.showStatic) {
+            triggerStaticOverlay(1500);
+        }
         triggerJumpscare(event.imageUrl, event.soundUrl); // Pass image and sound URLs
         // Note: If jumpscare assets (image/sound) are not loading, consider hosting them locally or on a reliable CDN to avoid CORS or external service issues.
     }
