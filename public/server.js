@@ -29,18 +29,19 @@ const SHOP_ITEMS = {
     spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 },
     scramble: { name: 'UI Scramble', type: 'troll', effect: 'scramble', baseCost: 500, costMultiplier: 1.5 },
     tax: { name: 'Tax Everyone', type: 'troll', effect: 'tax', baseCost: 800, costMultiplier: 1.6 },
-    loudSoundTroll: { name: 'Loud Sound Troll', type: 'troll', effect: 'loudSoundTroll', baseCost: 3000, costMultiplier: 1.0 } // New troll item
+    loudSoundTroll: { name: 'Loud Sound Troll', type: 'troll', effect: 'loudSoundTroll', baseCost: 3000, costMultiplier: 1.0 },
+    jumpscare: { name: 'Foxy Jumpscare', type: 'troll', effect: 'jumpscare', baseCost: 1200, costMultiplier: 1.5 }
 };
 
 // Serve static files
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    socket.on('joinRoom', ({ playerName, roomCode, duration, maxPlayers }) => {
     socket.on('joinRoom', ({ playerName, roomCode, duration, maxPlayers, avatar, cursor }) => {
-        
+        const code = roomCode.toUpperCase();
+
         if (!rooms[code]) {
-            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4);
+            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4, 'classic');
         }
 
         if (Object.keys(rooms[code].players).length >= rooms[code].maxPlayers) {
@@ -166,6 +167,13 @@ io.on('connection', (socket) => {
         io.to(socket.roomCode).emit('gameState', room.players);
     });
 
+    socket.on('leaveRoom', () => {
+        if (socket.roomCode && rooms[socket.roomCode]) {
+            handlePlayerDisconnect(socket, socket.roomCode);
+            socket.emit('leftRoom');
+        }
+    });
+
     socket.on('disconnect', () => { // Use a common handler for disconnect and leaveRoom
         if (socket.roomCode && rooms[socket.roomCode]) {
             handlePlayerDisconnect(socket, socket.roomCode);
@@ -217,9 +225,11 @@ function handlePlayerDisconnect(socket, roomCode) {
         room.hostId = Object.keys(room.players)[0];
         io.to(roomCode).emit('roomUpdate', { 
             players: room.players, 
-            hostId: room.hostId, gameActive: room.gameActive });
+            hostId: room.hostId, 
+            gameActive: room.gameActive 
+        });
     }
-});
+}
 
 function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
     rooms[code] = {
@@ -233,6 +243,11 @@ function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
         mode: mode
     };
     
+    // Trigger random event every 1 minute
+    rooms[code].timers.randomEventInterval = setInterval(() => {
+        triggerRandomEvent(code);
+    }, 60000);
+
     rooms[code].timers.gameTimer = setInterval(() => {
         const room = rooms[code];
         if (room && room.gameActive && room.timeLeft > 0) {
@@ -242,6 +257,7 @@ function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
             rooms[code].gameActive = false;
             io.to(code).emit('gameOver', rooms[code].players);
             clearInterval(rooms[code].timers.gameTimer);
+            clearInterval(rooms[code].timers.randomEventInterval);
         }
     }, 1000);
 }
@@ -267,7 +283,7 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
             target.score -= stealAmount;
             buyer.score += stealAmount;
             io.to(room.code).emit('trollEvent', { 
-                type: 'steal', from: target.name, to: buyer.name, amount: stealAmount 
+                type: 'steal', from: buyer.name, to: target.name, amount: stealAmount 
             });
             break;
             
@@ -311,8 +327,9 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
         case 'spam':
             const emojis = ['😂', '🤡', '💀', '🙃', '😎'];
             let spamCount = 0;
+            const totalSpam = buyer.items['spam'] || 1; // Increases by 1 each time it's bought
             const spamInterval = setInterval(() => {
-                if (spamCount >= 5) {
+                if (spamCount >= totalSpam) {
                     clearInterval(spamInterval);
                     return;
                 }
@@ -334,6 +351,18 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
                 targetName: target.name,
                 imageUrl: imageUrl,
                 soundUrl: soundUrl
+            });
+            break;
+            
+        case 'jumpscare':
+            // Using a classic FNAF-style Foxy asset and scream
+            io.to(target.id).emit('trollEvent', {
+                type: 'jumpscare',
+                from: buyer.name,
+                target: target.id,
+                targetName: target.name,
+                imageUrl: 'https://i.imgur.com/vHqY7bE.png', // Withered Foxy jumpscare frame
+                soundUrl: 'https://raw.githubusercontent.com/Aris-The-Surge/fnaf-sounds/master/FNaF2/Scream.mp3'
             });
             break;
 

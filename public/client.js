@@ -88,36 +88,42 @@ function playGameOverSound() {
     });
 }
 
-function triggerJumpscare() {
+function triggerJumpscare(imageUrl, soundUrl) { // Added parameters
     const overlay = document.getElementById('jumpscare-overlay');
     const img = document.getElementById('jumpscare-img');
     
-    const scaryImages = [
-        'https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500',
-        'https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?w=500',
-        'https://images.unsplash.com/photo-1505635552518-3448ff116af3?w=500'
-    ];
-    
-    img.src = scaryImages[Math.floor(Math.random() * scaryImages.length)];
+    // Create a new audio element each time to ensure it plays immediately without overlap issues
+    const jumpscareAudio = new Audio(soundUrl);
+    jumpscareAudio.volume = 1.0; 
+
+    img.src = imageUrl;
     overlay.style.display = 'flex';
     
-    if (!audioCtx) return;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(80, audioCtx.currentTime);
-    osc.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.1);
-    osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.5);
+    // Force a reflow for the transition
+    void overlay.offsetWidth;
+    overlay.style.opacity = '1';
+    
+    jumpscareAudio.play().catch(e => console.error("Error playing jumpscare sound:", e));
+
+    // Extra jarring vibration for mobile users
+    if ("vibrate" in navigator) {
+        navigator.vibrate([100, 50, 100, 50, 300]);
+    }
+
+    if (audioCtx) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+    }
     
     setTimeout(() => {
-        overlay.style.display = 'none';
-    }, 2000);
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            img.src = '';
+        }, 500);
+    }, 1200); // Slightly shorter duration for a "snappier" jumpscare
 }
 
 socket.on('connect', () => {
@@ -392,7 +398,7 @@ socket.on('trollEvent', (event) => {
     }
 
     if (event.type === 'jumpscare' && event.target === socket.id) {
-        triggerJumpscare();
+        triggerJumpscare(event.imageUrl, event.soundUrl); // Pass image and sound URLs
     }
 
     if (event.type === 'loudSoundTroll' && event.target === socket.id) {
@@ -404,7 +410,7 @@ socket.on('trollEvent', (event) => {
             trollImage.src = event.imageUrl;
             trollSound.src = event.soundUrl;
             trollOverlay.style.display = 'flex';
-            trollSound.play();
+            trollSound.play().catch(e => console.error("Error playing loud sound troll:", e)); // Added .catch()
             setTimeout(() => {
                 trollOverlay.style.display = 'none';
             }, 3000); // Show for 3 seconds
@@ -474,7 +480,7 @@ socket.on('gameOver', (players) => {
             } else {
                 resultHeader.innerText = "Better luck next time!";
             }
-            gameOverScreen.prepend(resultHeader);
+            gameOverScreen.prepend(resultHeader); // Prepend to ensure it's at the top
         }
         const li = document.createElement('li');
         li.innerHTML = `<strong>#${index + 1} ${p.name}</strong> - Final Score: ${p.score}`;
