@@ -88,92 +88,85 @@ function playGameOverSound() {
     });
 }
 
-function triggerJumpscare(imageUrl, soundUrl) { // Added parameters
+function triggerJumpscare(imageUrl, soundUrl) {
     const overlay = document.getElementById('jumpscare-overlay');
     const img = document.getElementById('jumpscare-img');
+    if (!overlay || !img) return;
 
-    // Create a new audio element each time to ensure it plays immediately without overlap issues
+    // Foxy's Scream
     const jumpscareAudio = new Audio(soundUrl);
     jumpscareAudio.volume = 1.0; 
 
     img.src = imageUrl;
     overlay.style.display = 'flex';
     
-    // Force a reflow for the transition
+    // Force reflow for the CSS "pop" effect
     void overlay.offsetWidth;
     overlay.style.opacity = '1';
-    
-    jumpscareAudio.play().catch(e => console.error("Error playing jumpscare sound:", e));
+    overlay.style.transform = 'scale(1.2)'; // Slight zoom-in for Foxy's lunging effect
 
-    // Extra jarring vibration for mobile users
+    jumpscareAudio.play().catch(e => console.error("Foxy's scream failed to load:", e));
+
     if ("vibrate" in navigator) {
-        navigator.vibrate([100, 50, 100, 50, 300]);
+        navigator.vibrate([500]); // One long pulse for the shock
     }
 
     setTimeout(() => {
         overlay.style.opacity = '0';
+        overlay.style.transform = 'scale(1)'; 
         setTimeout(() => {
             overlay.style.display = 'none';
             img.src = '';
-        }, 500);
-    }, 1200); 
+        }, 400);
+    }, 800); // Shorter duration for Foxy's speed
 }
 
-function triggerStaticOverlay(duration = 2000) {
-    const staticOverlay = document.getElementById('static-overlay');
-    if (!staticOverlay) return;
-    
-    staticOverlay.style.display = 'block';
-    setTimeout(() => {
-        staticOverlay.style.display = 'none';
-    }, duration);
-}
+function triggerJumpscare(imageUrl, soundUrl) {
+    const overlay = document.getElementById('jumpscare-overlay');
+    const img = document.getElementById('jumpscare-img');
+    if (!overlay || !img) return;
 
-function createFloatingEmoji(emoji) {
-    console.log('Creating floating emoji:', emoji); 
+    // Load Foxy's scream
+    const jumpscareAudio = new Audio(soundUrl);
     jumpscareAudio.volume = 1.0; 
 
     img.src = imageUrl;
     overlay.style.display = 'flex';
     
-    // Force a reflow for the transition
+    // Force a reflow and add a slight zoom for Foxy's lunge
     void overlay.offsetWidth;
     overlay.style.opacity = '1';
+    overlay.style.transform = 'scale(1.1)'; 
     
-    jumpscareAudio.play().catch(e => console.error("Error playing jumpscare sound:", e));
+    jumpscareAudio.play().catch(e => console.error("Foxy scream blocked or not found:", e));
 
-    // Extra jarring vibration for mobile users
     if ("vibrate" in navigator) {
-        navigator.vibrate([100, 50, 100, 50, 300]);
+        navigator.vibrate([500]); // Shock pulse
     }
 
-    if (audioCtx) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-    }
-    
+    // Foxy is fast, so we keep the jumpscare duration short (800ms)
     setTimeout(() => {
         overlay.style.opacity = '0';
+        overlay.style.transform = 'scale(1)';
         setTimeout(() => {
             overlay.style.display = 'none';
             img.src = '';
-        }, 500);
-    }, 1200); // Slightly shorter duration for a "snappier" jumpscare
+        }, 400);
+    }, 800); 
 }
 
 function createFloatingEmoji(emoji) {
-    console.log('Creating floating emoji:', emoji); // Added for debugging
     const el = document.createElement('div');
     el.innerText = emoji;
-    el.style.position = 'fixed';
-    el.style.left = (Math.random() * 80 + 10) + 'vw';
-    el.style.top = '100vh';
-    el.style.fontSize = '4rem';
-    el.style.zIndex = '10000';
-    el.style.pointerEvents = 'none';
-    el.style.transition = 'all 2.5s cubic-bezier(0.1, 0.25, 0.1, 1)';
+    el.style.cssText = `
+        position: fixed;
+        left: ${Math.random() * 80 + 10}vw;
+        top: 100vh;
+        font-size: 4rem;
+        z-index: 10000;
+        pointer-events: none;
+        transition: all 2.5s cubic-bezier(0.1, 0.25, 0.1, 1);
+    `;
     document.body.appendChild(el);
     
     setTimeout(() => {
@@ -184,7 +177,60 @@ function createFloatingEmoji(emoji) {
 }
 
 socket.on('connect', () => {
-    console.log('Connected to server with ID:', socket.id);
+function triggerJumpscare(imageUrl, soundUrl) {
+    const overlay = document.getElementById('jumpscare-overlay');
+    const img = document.getElementById('jumpscare-img');
+    if (!overlay || !img) return;
+
+    // Load Foxy's scream
+    const jumpscareAudio = new Audio(soundUrl);
+    jumpscareAudio.volume = 1.0; 
+
+    img.src = imageUrl;
+    overlay.style.display = 'flex';
+    
+    // Force a reflow and add a slight zoom for Foxy's lunge
+    void overlay.offsetWidth;
+    overlay.style.opacity = '1';
+    overlay.style.transform = 'scale(1.1)'; 
+    
+    jumpscareAudio.play().catch(e => console.error("Foxy scream blocked or not found:", e));
+
+    if ("vibrate" in navigator) {
+        navigator.vibrate([500]); // Shock pulse
+    }
+
+    // Foxy is fast, so we keep the jumpscare duration short (800ms)
+    setTimeout(() => {
+        overlay.style.opacity = '0';
+        overlay.style.transform = 'scale(1)';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            img.src = '';
+        }, 400);
+    }, 800); 
+}
+
+function createFloatingEmoji(emoji) {
+    const el = document.createElement('div');
+    el.innerText = emoji;
+    el.style.cssText = `
+        position: fixed;
+        left: ${Math.random() * 80 + 10}vw;
+        top: 100vh;
+        font-size: 4rem;
+        z-index: 10000;
+        pointer-events: none;
+        transition: all 2.5s cubic-bezier(0.1, 0.25, 0.1, 1);
+    `;
+    document.body.appendChild(el);
+    
+    setTimeout(() => {
+        el.style.top = '-15vh';
+        el.style.transform = `rotate(${Math.random() * 360}deg)`;
+        setTimeout(() => el.remove(), 2600);
+    }, 50);
+}   console.log('Connected to server with ID:', socket.id);
 });
 
 socket.on('error', (msg) => {
@@ -525,10 +571,19 @@ socket.on('frozenMessage', ({ remaining }) => {
 
 // 9. Update Timer
 socket.on('updateTimer', (timeLeft) => {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    document.getElementById('timer').innerText = 
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    try {
+        const timerElement = document.getElementById('timer');
+        if (!timerElement) return;
+
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        
+        timerElement.innerText = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+    } catch (error) {
+        console.error("Timer update failed but script is still running:", error);
+    }
 });
 
 // 11. Random Event
