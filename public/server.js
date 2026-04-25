@@ -78,7 +78,7 @@ io.on('connection', (socket) => {
             team: null
         };
 
-        // Auto-assign teams if in team mode
+        // Auto-assign teams if in team mode (assuming 'teams' mode is handled elsewhere for room creation)
         if (rooms[code].mode === 'teams') {
             const playerCount = Object.keys(rooms[code].players).length;
             rooms[code].players[socket.id].team = (playerCount % 2 === 0) ? 'blue' : 'red';
@@ -102,6 +102,7 @@ io.on('connection', (socket) => {
         io.to(code).emit('gameState', rooms[code].players);
         io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
         io.to(code).emit('shopItems', SHOP_ITEMS);
+        io.to(code).emit('updateTimer', rooms[code].timeLeft); // Send initial timer value to new players
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
 
@@ -188,8 +189,10 @@ io.on('connection', (socket) => {
             return;
         }
 
-        initializeRoom(code, duration * 60);
+        // Ensure duration defaults to 5 minutes if not provided or 0, preventing timeLeft from being 0 or NaN.
+        initializeRoom(code, (duration || 5) * 60); 
         socket.emit('lobbyCreated', { name: lobbyName, code: code, duration });
+        io.to(code).emit('updateTimer', rooms[code].timeLeft); // Send initial timer value to the creator
         console.log(`🚀 Lobby Created: ${code} (${duration}m)`);
     });
 

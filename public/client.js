@@ -127,6 +127,7 @@ function triggerJumpscare(imageUrl, soundUrl) { // Added parameters
 }
 
 function createFloatingEmoji(emoji) {
+    console.log('Creating floating emoji:', emoji); // Added for debugging
     const el = document.createElement('div');
     el.innerText = emoji;
     el.style.position = 'fixed';
@@ -423,6 +424,7 @@ socket.on('trollEvent', (event) => {
 
     if (event.type === 'jumpscare' && event.target === socket.id) {
         triggerJumpscare(event.imageUrl, event.soundUrl); // Pass image and sound URLs
+        // Note: If jumpscare assets (image/sound) are not loading, consider hosting them locally or on a reliable CDN to avoid CORS or external service issues.
     }
 
     if (event.type === 'loudSoundTroll' && event.target === socket.id) {
