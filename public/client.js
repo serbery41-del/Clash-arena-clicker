@@ -21,29 +21,63 @@ const clickTarget = document.getElementById('click-target');
 const shopContainer = document.getElementById('shop-items');
 const trollContainer = document.getElementById('troll-items');
 
+// Customization UI Elements
+const avatarUrlInput = document.getElementById('avatarUrl');
+const cursorStyleInput = document.getElementById('cursorStyle');
+const saveCustomizationBtn = document.getElementById('saveCustomizationBtn');
+const myAvatar = document.getElementById('my-avatar');
+
 // State
 let shopItems = {};
 let playerItems = {};
 
-// 1. Join Room
-joinBtn.addEventListener('pointerdown', () => {
-    const playerName = document.getElementById('playerName').value.trim();
-    const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
-    const duration = document.getElementById('game-minutes').value;
-    const maxPlayers = document.getElementById('max-players').value;
+// 1. Join Room Logic
+function joinGame(mode, cardSelector) {
+    const card = document.querySelector(cardSelector);
+    const playerName = card.querySelector('.name-input').value.trim();
+    const roomCode = card.querySelector('.code-input').value.trim().toUpperCase();
+    const duration = card.querySelector('.time-input').value;
+    const maxPlayers = card.querySelector('.players-input')?.value || 4;
+    
+    const avatar = localStorage.getItem('playerAvatar') || '';
+    const cursor = localStorage.getItem('playerCursor') || '';
 
     if (playerName && roomCode) {
         socket.emit('joinRoom', { 
             playerName, 
             roomCode,
+            mode,
             duration: parseInt(duration),
-            maxPlayers: parseInt(maxPlayers)
+            maxPlayers: parseInt(maxPlayers),
+            avatar,
+            cursor
         });
-        
         document.getElementById('current-room').innerText = roomCode;
     } else {
         alert("Please enter a name and a room code!");
     }
+}
+
+document.querySelector('.join-classic').addEventListener('pointerdown', () => {
+    joinGame('classic', '.mode-card:not(.team-mode-card)');
+});
+
+document.querySelector('.join-team').addEventListener('pointerdown', () => {
+    joinGame('teams', '.team-mode-card');
+});
+
+// Customization Logic
+saveCustomizationBtn.addEventListener('pointerdown', () => {
+    localStorage.setItem('playerAvatar', avatarUrlInput.value.trim());
+    localStorage.setItem('playerCursor', cursorStyleInput.value.trim());
+    alert('Customization saved!');
+    applyCursor(cursorStyleInput.value.trim());
+});
+
+// Load saved customization on page load
+window.addEventListener('load', () => {
+    avatarUrlInput.value = localStorage.getItem('playerAvatar') || '';
+    cursorStyleInput.value = localStorage.getItem('playerCursor') || '';
 });
 
 // Start Game logic
@@ -70,6 +104,14 @@ socket.on('roomUpdate', ({ players, hostId, gameActive }) => {
         // which will populate the game screen correctly.
         document.getElementById('current-room').innerText = document.getElementById('roomCode').value.trim().toUpperCase();
     }
+
+    // Update player avatars/cursors on room update
+    Object.values(players).forEach(p => {
+        if (p.id === socket.id) {
+            applyCursor(p.cursor);
+            if (myAvatar) myAvatar.src = p.avatar;
+        }
+    });
     
     document.getElementById('lobby-status').innerText = `${playerCount} players in lobby`;
 });
@@ -111,8 +153,10 @@ function handleShopClick(e) {
     const itemId = btn.dataset.item;
     const item = shopItems[itemId];
     if (!item) return;
-    
-    socket.emit('buyUpgrade', { itemId });
+
+    // Get selected target for trolls
+    const targetId = document.getElementById('troll-target-select').value;
+    socket.emit('buyUpgrade', { itemId, targetId });
 }
 
 shopContainer.addEventListener('pointerdown', handleShopClick);
@@ -170,17 +214,37 @@ function updateShopUI() {
 // 5. Update Game State (Leaderboard & Score)
 socket.on('gameState', (players) => {
     const leaderboardUI = document.getElementById('leaderboard');
+    const targetSelect = document.getElementById('troll-target-select');
+    const currentTarget = targetSelect.value;
+    
     leaderboardUI.innerHTML = '';
+    targetSelect.innerHTML = '<option value="random">Random Opponent</option>';
 
     const playersArray = Object.values(players);
     playersArray.sort((a, b) => b.score - a.score);
 
     playersArray.forEach((p, index) => {
+        const avatarHtml = p.avatar ? `<img src="${p.avatar}" class="player-avatar-small" alt="avatar">` : '';
+        const teamTag = p.team ? `<span class="team-tag tag-${p.team}">${p.team.toUpperCase()}</span> ` : '';
+        
         const li = document.createElement('li');
-        li.innerHTML = `<span>#${index + 1} ${p.name}</span> <span>${p.score}</span>`;
+        li.className = p.team ? `team-${p.team}` : '';
+        li.innerHTML = `<span>#${index + 1} ${avatarHtml} ${teamTag}${p.name}</span> <span>${p.score}</span>`;
         leaderboardUI.appendChild(li);
 
+        // Update troll target dropdown
+        if (p.id !== socket.id) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = p.name + (p.team ? ` (${p.team})` : '');
+            targetSelect.appendChild(opt);
+        }
+
         if (p.id === socket.id) { // Rely solely on socket.id for current player's UI
+            // Apply cursor and avatar for current player
+            applyCursor(p.cursor);
+            if (myAvatar) myAvatar.src = p.avatar;
+
             document.getElementById('my-score').innerText = `Score: ${p.score}`;
             document.getElementById('my-multiplier').innerText = `Multiplier: x${p.multiplier}`;
             document.getElementById('my-clickPower').innerText = `Click Power: x${p.clickPower}`;
@@ -203,6 +267,9 @@ socket.on('gameState', (players) => {
             });
         }
     });
+
+    // Restore previous target selection if still valid
+    if ([...targetSelect.options].some(o => o.value === currentTarget)) targetSelect.value = currentTarget;
 });
 
 // 6. Troll Events
@@ -214,7 +281,8 @@ socket.on('trollEvent', (event) => {
         swap: `🔄 Scores swapped between ${event.players[0]} and ${event.players[1]}!`,
         reduce: `📉 ${event.target}'s multiplier decreased!`,
         spam: `😂 ${event.target} is being spammed with ${event.emoji}!`,
-        tax: `💰 ${event.from} collected $${event.amount} in taxes!`,
+        tax: `💰 ${event.from} collected ${event.amount} in taxes!`,
+        loudSoundTroll: `🔊 ${event.from} trolled ${event.targetName} with a loud sound!`,
         scramble: `🌀 ${event.targetName}'s controls were scrambled!`
     };
 
@@ -224,7 +292,23 @@ socket.on('trollEvent', (event) => {
         nav.style.flexDirection = nav.style.flexDirection === 'row-reverse' ? 'row' : 'row-reverse';
         setTimeout(() => { nav.style.flexDirection = 'row'; }, 10000);
     }
-    
+
+    // Handle loud sound troll
+    if (event.type === 'loudSoundTroll' && event.target === socket.id) {
+        const trollOverlay = document.getElementById('troll-overlay');
+        const trollImage = document.getElementById('troll-image');
+        const trollSound = document.getElementById('troll-sound');
+
+        if (trollOverlay && trollImage && trollSound) {
+            trollImage.src = event.imageUrl;
+            trollSound.src = event.soundUrl;
+            trollOverlay.style.display = 'flex';
+            trollSound.play();
+            setTimeout(() => {
+                trollOverlay.style.display = 'none';
+            }, 3000); // Show for 3 seconds
+        }
+    }
     if (messages[event.type]) showNotification(messages[event.type]);
 });
 
@@ -242,6 +326,11 @@ function showNotification(msg) {
     }, 2500);
 }
 
+function applyCursor(cursorStyle) {
+    if (cursorStyle) {
+        document.body.style.cursor = cursorStyle;
+    }
+}
 // 7. Lucky Hit
 socket.on('luckyHit', ({ playerId, points }) => {
     console.log(`Lucky hit! +${points} bonus points`);
@@ -258,6 +347,11 @@ socket.on('updateTimer', (timeLeft) => {
     const seconds = timeLeft % 60;
     document.getElementById('timer').innerText = 
         `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+});
+
+// 11. Random Event
+socket.on('randomEvent', (event) => {
+    showNotification(`✨ Random Event: ${event.message}`);
 });
 
 // 10. Game Over

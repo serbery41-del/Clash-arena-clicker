@@ -28,7 +28,8 @@ const SHOP_ITEMS = {
     reduce: { name: 'Reduce Mult', type: 'troll', effect: 'reduce', baseCost: 600, costMultiplier: 1.4 },
     spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 },
     scramble: { name: 'UI Scramble', type: 'troll', effect: 'scramble', baseCost: 500, costMultiplier: 1.5 },
-    tax: { name: 'Tax Everyone', type: 'troll', effect: 'tax', baseCost: 800, costMultiplier: 1.6 }
+    tax: { name: 'Tax Everyone', type: 'troll', effect: 'tax', baseCost: 800, costMultiplier: 1.6 },
+    loudSoundTroll: { name: 'Loud Sound Troll', type: 'troll', effect: 'loudSoundTroll', baseCost: 3000, costMultiplier: 1.0 } // New troll item
 };
 
 // Serve static files
@@ -36,7 +37,7 @@ app.use(express.static('public'));
 
 io.on('connection', (socket) => {
     socket.on('joinRoom', ({ playerName, roomCode, duration, maxPlayers }) => {
-        const code = roomCode.toUpperCase();
+    socket.on('joinRoom', ({ playerName, roomCode, duration, maxPlayers, avatar, cursor }) => {
         
         if (!rooms[code]) {
             initializeRoom(code, (duration || 5) * 60, maxPlayers || 4);
@@ -66,12 +67,21 @@ io.on('connection', (socket) => {
             score: 0,
             multiplier: 1,
             clickPower: 1,
+            avatar: avatar || '', // Store avatar URL
             autoClickers: 0,
+            cursor: cursor || 'default', // Store custom cursor style
             luckChance: 0,
             frozen: false,
             frozenUntil: 0,
-            items: {}
+            items: {},
+            team: null
         };
+
+        // Auto-assign teams if in team mode
+        if (rooms[code].mode === 'teams') {
+            const playerCount = Object.keys(rooms[code].players).length;
+            rooms[code].players[socket.id].team = (playerCount % 2 === 0) ? 'blue' : 'red';
+        }
         
         // Initialize item counts
         Object.keys(SHOP_ITEMS).forEach(item => {
@@ -125,6 +135,7 @@ io.on('connection', (socket) => {
         // SAFETY CHECK: Ensure data exists and player is in a room
         if (!data || !data.itemId || !socket.roomCode) return;
         const itemId = data.itemId;
+        const targetId = data.targetId;
         const room = rooms[socket.roomCode];
         const player = room?.players[socket.id];
         const item = SHOP_ITEMS[itemId];
@@ -149,7 +160,7 @@ io.on('connection', (socket) => {
         }
         // Apply troll effects
         else if (item.type === 'troll') {
-            applyTrollEffect(room, player, itemId, item.effect);
+            applyTrollEffect(room, player, itemId, item.effect, targetId);
         }
         
         io.to(socket.roomCode).emit('gameState', room.players);
@@ -210,7 +221,7 @@ function handlePlayerDisconnect(socket, roomCode) {
     }
 });
 
-function initializeRoom(code, durationInSeconds, maxPlayers) {
+function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
     rooms[code] = {
         code: code,
         players: {},
@@ -218,7 +229,8 @@ function initializeRoom(code, durationInSeconds, maxPlayers) {
         gameActive: false,
         timers: {},
         maxPlayers: parseInt(maxPlayers) || 4,
-        hostId: null
+        hostId: null,
+        mode: mode
     };
     
     rooms[code].timers.gameTimer = setInterval(() => {
@@ -234,7 +246,7 @@ function initializeRoom(code, durationInSeconds, maxPlayers) {
     }, 1000);
 }
 
-function applyTrollEffect(room, buyer, itemId, effect) {
+function applyTrollEffect(room, buyer, itemId, effect, targetId) {
     const opponents = Object.values(room.players).filter(p => p.id !== buyer.id);
     if (opponents.length === 0) {
         buyer.items[itemId]--; // Revert the purchase count
@@ -242,7 +254,12 @@ function applyTrollEffect(room, buyer, itemId, effect) {
         return;
     }
     
-    const target = opponents[Math.floor(Math.random() * opponents.length)];
+    let target;
+    if (targetId && targetId !== 'random' && room.players[targetId]) {
+        target = room.players[targetId];
+    } else {
+        target = opponents[Math.floor(Math.random() * opponents.length)];
+    }
     
     switch(effect) {
         case 'steal':
@@ -306,6 +323,20 @@ function applyTrollEffect(room, buyer, itemId, effect) {
             }, 500);
             break;
             
+        case 'loudSoundTroll':
+            // Example image and sound URLs - replace with actual assets
+            const imageUrl = 'https://i.imgur.com/example_jumpscare.png'; // Placeholder image
+            const soundUrl = 'https://www.soundjay.com/buttons/sounds/beep-07.mp3'; // Placeholder sound
+            io.to(target.id).emit('trollEvent', {
+                type: 'loudSoundTroll',
+                from: buyer.name,
+                target: target.id,
+                targetName: target.name,
+                imageUrl: imageUrl,
+                soundUrl: soundUrl
+            });
+            break;
+
         case 'tax':
             let totalTaxed = 0;
             opponents.forEach(p => {
@@ -324,6 +355,49 @@ function applyTrollEffect(room, buyer, itemId, effect) {
 function getItemCost(itemId, owned) {
     const item = SHOP_ITEMS[itemId];
     return Math.floor(item.baseCost * Math.pow(item.costMultiplier, owned));
+}
+
+function triggerRandomEvent(roomCode) {
+    const room = rooms[roomCode];
+    if (!room || !room.gameActive || Object.keys(room.players).length === 0) return;
+
+    const eventTypes = ['scoreBoostGlobal', 'scoreDrainGlobal', 'multiplierBoostRandom', 'freezeRandom'];
+    const randomEventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+    const playersArray = Object.values(room.players);
+    const randomPlayer = playersArray[Math.floor(Math.random() * playersArray.length)];
+
+    let message = '';
+
+    switch (randomEventType) {
+        case 'scoreBoostGlobal':
+            const globalBoost = 500;
+            playersArray.forEach(p => p.score += globalBoost);
+            message = `Everyone received a ${globalBoost} point boost!`;
+            break;
+        case 'scoreDrainGlobal':
+            const globalDrainPercentage = 0.1; // 10%
+            playersArray.forEach(p => p.score = Math.max(0, p.score * (1 - globalDrainPercentage)));
+            message = `Everyone lost ${globalDrainPercentage * 100}% of their score!`;
+            break;
+        case 'multiplierBoostRandom':
+            if (randomPlayer) {
+                randomPlayer.multiplier += 2;
+                message = `${randomPlayer.name} received a temporary multiplier boost!`;
+                setTimeout(() => {
+                    if (room.players[randomPlayer.id]) room.players[randomPlayer.id].multiplier -= 2;
+                }, 15000); // Boost lasts 15 seconds
+            }
+            break;
+        case 'freezeRandom':
+            if (randomPlayer) {
+                randomPlayer.frozen = true;
+                randomPlayer.frozenUntil = Date.now() + 10000; // Freeze for 10 seconds
+                message = `${randomPlayer.name} has been frozen!`;
+            }
+            break;
+    }
+    io.to(roomCode).emit('randomEvent', { message });
+    io.to(roomCode).emit('gameState', room.players); // Update scores/multipliers
 }
 
 server.listen(PORT, async () => {
