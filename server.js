@@ -1,21 +1,16 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const ngrok = require('ngrok'); // Added ngrok for public URL
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
 const PORT = process.env.PORT || 3000;
-let PUBLIC_URL = process.env.PUBLIC_URL || null;
-// Hardcoded authtoken to ensure ngrok bypasses local config issues
-const NGROK_TOKEN = '3CqO0fo14rWJm3SPZzfE8mbSSqP_3mnSdv9m4FuRFk8G5TDXk';
 
 // Game Constants & State
 const rooms = {};
-const lobbies = {};
-const GAME_DURATION = 300; // 5 minutes default
+const GAME_DURATION = 300;
 const SHOP_ITEMS = {
     multiplier: { name: 'Multiplier', type: 'self', baseCost: 50, costMultiplier: 1.5 },
     clickPower: { name: 'Click Power', type: 'self', baseCost: 100, costMultiplier: 1.8 },
@@ -28,18 +23,19 @@ const SHOP_ITEMS = {
     reduce: { name: 'Reduce Mult', type: 'troll', effect: 'reduce', baseCost: 600, costMultiplier: 1.4 },
     spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 },
     scramble: { name: 'UI Scramble', type: 'troll', effect: 'scramble', baseCost: 500, costMultiplier: 1.5 },
-    tax: { name: 'Tax Everyone', type: 'troll', effect: 'tax', baseCost: 800, costMultiplier: 1.6 }
+    tax: { name: 'Tax Everyone', type: 'troll', effect: 'tax', baseCost: 800, costMultiplier: 1.6 },
+    jumpscare: { name: 'Jumpscare', type: 'troll', effect: 'jumpscare', baseCost: 600, costMultiplier: 1.4 }
 };
 
 // Serve static files
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    socket.on('joinRoom', ({ playerName, roomCode, duration, maxPlayers }) => {
+    socket.on('joinRoom', ({ playerName, roomCode, mode, duration, maxPlayers }) => {
         const code = roomCode.toUpperCase();
         
         if (!rooms[code]) {
-            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4);
+            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4, mode || 'classic');
         }
 
         if (Object.keys(rooms[code].players).length >= rooms[code].maxPlayers) {
@@ -53,13 +49,18 @@ io.on('connection', (socket) => {
             rooms[code].hostId = socket.id;
         }
 
-        // CLEANUP: If this player already exists in the room (reconnection), 
-        // clear their old timer to prevent double-scoring.
         if (rooms[code].timers && rooms[code].timers[socket.id]) {
             clearInterval(rooms[code].timers[socket.id]);
         }
 
-        // Initialize player
+        // Assign team for team mode
+        let team = null;
+        if (rooms[code].mode === 'teams') {
+            const redCount = Object.values(rooms[code].players).filter(p => p.team === 'red').length;
+            const blueCount = Object.values(rooms[code].players).filter(p => p.team === 'blue').length;
+            team = redCount <= blueCount ? 'red' : 'blue';
+        }
+
         rooms[code].players[socket.id] = {
             id: socket.id,
             name: playerName,
@@ -70,15 +71,14 @@ io.on('connection', (socket) => {
             luckChance: 0,
             frozen: false,
             frozenUntil: 0,
-            items: {}
+            items: {},
+            team: team
         };
         
-        // Initialize item counts
         Object.keys(SHOP_ITEMS).forEach(item => {
             rooms[code].players[socket.id].items[item] = 0;
         });
 
-        // Auto-clicker timer
         rooms[code].timers[socket.id] = setInterval(() => {
             const room = rooms[code];
             const player = room?.players[socket.id];
@@ -89,7 +89,7 @@ io.on('connection', (socket) => {
         }, 1000);
 
         io.to(code).emit('gameState', rooms[code].players);
-        io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
+        io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId, mode: rooms[code].mode });
         io.to(code).emit('shopItems', SHOP_ITEMS);
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
@@ -116,13 +116,17 @@ io.on('connection', (socket) => {
     socket.on('startGame', () => {
         const room = rooms[socket.roomCode];
         if (room && socket.id === room.hostId && !room.gameActive) {
+            // Shuffle teams if in team mode
+            if (room.mode === 'teams') {
+                shuffleTeams(room);
+            }
             room.gameActive = true;
             io.to(socket.roomCode).emit('gameStarted');
+            io.to(socket.roomCode).emit('gameState', room.players);
         }
     });
 
     socket.on('buyUpgrade', (data) => {
-        // SAFETY CHECK: Ensure data exists and player is in a room
         if (!data || !data.itemId || !socket.roomCode) return;
         const itemId = data.itemId;
         const room = rooms[socket.roomCode];
@@ -137,7 +141,6 @@ io.on('connection', (socket) => {
         player.score -= cost;
         player.items[itemId]++;
         
-        // Apply self-buffs
         if (item.type === 'self' || itemId === 'luckBoost') {
             switch(itemId) {
                 case 'multiplier': player.multiplier += 1; break;
@@ -147,7 +150,6 @@ io.on('connection', (socket) => {
                 case 'megaDrill': player.autoClickers += 10; break;
             }
         }
-        // Apply troll effects
         else if (item.type === 'troll') {
             applyTrollEffect(room, player, itemId, item.effect);
         }
@@ -166,45 +168,23 @@ io.on('connection', (socket) => {
             
             io.to(socket.roomCode).emit('gameState', room.players);
             
-            // Clean up empty rooms
             if (Object.keys(room.players).length === 0) {
                 clearInterval(room.timers.gameTimer);
                 delete rooms[socket.roomCode];
             } else if (socket.id === room.hostId) {
-                // Reassign host
                 room.hostId = Object.keys(room.players)[0];
                 io.to(socket.roomCode).emit('roomUpdate', { 
                     players: room.players, 
-                    hostId: room.hostId 
+                    hostId: room.hostId,
+                    mode: room.mode
                 });
             }
         }
         console.log('Player disconnected:', socket.id);
     });
-
-    socket.on('createLobby', ({ lobbyName, duration }) => {
-        const code = lobbyName.toUpperCase().replace(/\s+/g, '-');
-        if (rooms[code]) {
-            socket.emit('error', 'A room with this name already exists.');
-            return;
-        }
-
-        initializeRoom(code, duration * 60);
-        socket.emit('lobbyCreated', { name: lobbyName, code: code, duration });
-        console.log(`🚀 Lobby Created: ${code} (${duration}m)`);
-    });
-
-    socket.on('joinLobby', ({ lobbyName }) => {
-        const code = lobbyName.toUpperCase().replace(/\s+/g, '-');
-        if (rooms[code]) {
-            socket.emit('lobbyJoined', { name: lobbyName });
-        } else {
-            socket.emit('error', 'Lobby not found.');
-        }
-    });
 });
 
-function initializeRoom(code, durationInSeconds, maxPlayers) {
+function initializeRoom(code, durationInSeconds, maxPlayers, mode = 'classic') {
     rooms[code] = {
         code: code,
         players: {},
@@ -212,7 +192,8 @@ function initializeRoom(code, durationInSeconds, maxPlayers) {
         gameActive: false,
         timers: {},
         maxPlayers: parseInt(maxPlayers) || 4,
-        hostId: null
+        hostId: null,
+        mode: mode
     };
     
     rooms[code].timers.gameTimer = setInterval(() => {
@@ -228,11 +209,25 @@ function initializeRoom(code, durationInSeconds, maxPlayers) {
     }, 1000);
 }
 
+function shuffleTeams(room) {
+    const playerIds = Object.keys(room.players);
+    // Fisher-Yates shuffle
+    for (let i = playerIds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [playerIds[i], playerIds[j]] = [playerIds[j], playerIds[i]];
+    }
+    
+    // Assign teams alternately
+    playerIds.forEach((id, index) => {
+        room.players[id].team = index % 2 === 0 ? 'red' : 'blue';
+    });
+}
+
 function applyTrollEffect(room, buyer, itemId, effect) {
     const opponents = Object.values(room.players).filter(p => p.id !== buyer.id);
     if (opponents.length === 0) {
-        buyer.items[itemId]--; // Revert the purchase count
-        buyer.score += getItemCost(itemId, buyer.items[itemId]); // Refund the original cost
+        buyer.items[itemId]--;
+        buyer.score += getItemCost(itemId, buyer.items[itemId]);
         return;
     }
     
@@ -244,7 +239,7 @@ function applyTrollEffect(room, buyer, itemId, effect) {
             target.score -= stealAmount;
             buyer.score += stealAmount;
             io.to(room.code).emit('trollEvent', { 
-                type: 'steal', from: target.name, to: buyer.name, amount: stealAmount 
+                type: 'steal', from: buyer.name, to: target.name, amount: stealAmount 
             });
             break;
             
@@ -303,13 +298,19 @@ function applyTrollEffect(room, buyer, itemId, effect) {
         case 'tax':
             let totalTaxed = 0;
             opponents.forEach(p => {
-                const tax = Math.floor(p.score * 0.15); // 15% tax
+                const tax = Math.floor(p.score * 0.15);
                 p.score -= tax;
                 totalTaxed += tax;
             });
             buyer.score += totalTaxed;
             io.to(room.code).emit('trollEvent', { 
                 type: 'tax', from: buyer.name, amount: totalTaxed 
+            });
+            break;
+            
+        case 'jumpscare':
+            io.to(room.code).emit('trollEvent', { 
+                type: 'jumpscare', from: buyer.name, target: target.id, targetName: target.name 
             });
             break;
     }
@@ -320,36 +321,15 @@ function getItemCost(itemId, owned) {
     return Math.floor(item.baseCost * Math.pow(item.costMultiplier, owned));
 }
 
-server.listen(PORT, async () => {
-    try {
-        if (!PUBLIC_URL) {
-            // Explicitly pass the authtoken here to fix the "stubborn" connection issue
-            PUBLIC_URL = await ngrok.connect({
-                proto: 'http',
-                addr: PORT,
-                authtoken: NGROK_TOKEN
-            });
-        }
-        console.log('═══════════════════════════════════════');
-        console.log('🎮 CLICK CLASH ARENA IS LIVE');
-        console.log('═══════════════════════════════════════');
-        console.log(`Local Address:  http://localhost:${PORT}`);
-        console.log(`Public URL:     ${PUBLIC_URL}`);
-        console.log('═══════════════════════════════════════');
-        console.log('Tip: Share the Public URL with your friends!');
-    } catch (err) {
-        console.log('═══════════════════════════════════════');
-        console.log('❌ NGROK ERROR: The tunnel could not start.');
-        console.log('💡 FIX: You need a free account from https://ngrok.com');
-        console.log('   Then run: npx ngrok config add-authtoken YOUR_TOKEN');
-        console.log('═══════════════════════════════════════');
-        console.log(`Server is still running locally at: http://localhost:${PORT}`);
-    }
+server.listen(PORT, () => {
+    console.log('═══════════════════════════════════════');
+    console.log('🎮 CHROMA ARENA CLICKER IS LIVE');
+    console.log('═══════════════════════════════════════');
+    console.log(`Server running at: http://localhost:${PORT}`);
+    console.log('═══════════════════════════════════════');
 });
 
-// Gracefully close the ngrok tunnel when the server stops
-process.on('SIGINT', async () => {
-    console.log('\nStopping server and closing tunnel...');
-    await ngrok.disconnect();
+process.on('SIGINT', () => {
+    console.log('\nStopping server...');
     process.exit();
 });
