@@ -177,60 +177,7 @@ function createFloatingEmoji(emoji) {
 }
 
 socket.on('connect', () => {
-function triggerJumpscare(imageUrl, soundUrl) {
-    const overlay = document.getElementById('jumpscare-overlay');
-    const img = document.getElementById('jumpscare-img');
-    if (!overlay || !img) return;
-
-    // Load Foxy's scream
-    const jumpscareAudio = new Audio(soundUrl);
-    jumpscareAudio.volume = 1.0; 
-
-    img.src = imageUrl;
-    overlay.style.display = 'flex';
-    
-    // Force a reflow and add a slight zoom for Foxy's lunge
-    void overlay.offsetWidth;
-    overlay.style.opacity = '1';
-    overlay.style.transform = 'scale(1.1)'; 
-    
-    jumpscareAudio.play().catch(e => console.error("Foxy scream blocked or not found:", e));
-
-    if ("vibrate" in navigator) {
-        navigator.vibrate([500]); // Shock pulse
-    }
-
-    // Foxy is fast, so we keep the jumpscare duration short (800ms)
-    setTimeout(() => {
-        overlay.style.opacity = '0';
-        overlay.style.transform = 'scale(1)';
-        setTimeout(() => {
-            overlay.style.display = 'none';
-            img.src = '';
-        }, 400);
-    }, 800); 
-}
-
-function createFloatingEmoji(emoji) {
-    const el = document.createElement('div');
-    el.innerText = emoji;
-    el.style.cssText = `
-        position: fixed;
-        left: ${Math.random() * 80 + 10}vw;
-        top: 100vh;
-        font-size: 4rem;
-        z-index: 10000;
-        pointer-events: none;
-        transition: all 2.5s cubic-bezier(0.1, 0.25, 0.1, 1);
-    `;
-    document.body.appendChild(el);
-    
-    setTimeout(() => {
-        el.style.top = '-15vh';
-        el.style.transform = `rotate(${Math.random() * 360}deg)`;
-        setTimeout(() => el.remove(), 2600);
-    }, 50);
-}   console.log('Connected to server with ID:', socket.id);
+    console.log('Connected to server with ID:', socket.id);
 });
 
 socket.on('error', (msg) => {
@@ -259,8 +206,10 @@ function joinGame(mode, cardSelector) {
     
     const playerName = card.querySelector('.name-input').value.trim();
     const roomCode = card.querySelector('.code-input').value.trim().toUpperCase();
-    const goalInput = card.querySelector('.time-input').value;
+    // Renamed selector to look for .time-input or .goal-input for backward compatibility
+    const goalInput = (card.querySelector('.goal-input') || card.querySelector('.time-input')).value;
     const maxPlayers = card.querySelector('.players-input')?.value || 4;
+    
     const winGoal = parseInt(goalInput) || 50000;
 
     if (playerName && roomCode) {
@@ -305,7 +254,7 @@ startBtn.addEventListener('click', () => {
     socket.emit('startGame');
 });
 
-socket.on('roomUpdate', ({ players, hostId, gameActive }) => {
+socket.on('roomUpdate', ({ players, hostId, gameActive, winGoal }) => {
     isHost = socket.id === hostId;
     const playerCount = Object.keys(players).length;
 
@@ -320,6 +269,12 @@ socket.on('roomUpdate', ({ players, hostId, gameActive }) => {
         lobbyScreen.style.display = 'none';
         gameScreen.style.display = 'flex';
         document.getElementById('current-room').innerText = socket.roomCode || '';
+    }
+
+    // The header element that previously showed the timer now shows the Win Goal
+    if (winGoal) {
+        const headerDisplay = document.getElementById('timer');
+        if (headerDisplay) headerDisplay.innerText = `Target: ${winGoal.toLocaleString()}`;
     }
 
     document.getElementById('lobby-status').innerText = `${playerCount} players in lobby`;

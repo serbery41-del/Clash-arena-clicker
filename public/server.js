@@ -102,7 +102,11 @@ io.on('connection', (socket) => {
         }, 1000);
 
         io.to(code).emit('gameState', rooms[code].players);
-        io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
+        io.to(code).emit('roomUpdate', { 
+            players: rooms[code].players, 
+            hostId: rooms[code].hostId,
+            winGoal: rooms[code].winGoal 
+        });
         io.to(code).emit('shopItems', SHOP_ITEMS);
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
@@ -241,7 +245,8 @@ function handlePlayerDisconnect(socket, roomCode) {
         io.to(roomCode).emit('roomUpdate', { 
             players: room.players, 
             hostId: room.hostId, 
-            gameActive: room.gameActive 
+            gameActive: room.gameActive,
+            winGoal: room.winGoal // Ensure goal is synced when host changes
         });
     }
 }
