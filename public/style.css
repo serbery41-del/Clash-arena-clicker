@@ -9,6 +9,13 @@
     --gradient-1: linear-gradient(45deg, #ff0055, #ffb700);
     --gradient-2: linear-gradient(135deg, #00dbde, #fc00ff);
     --modal-bg: rgba(0, 0, 0, 0.85);
+    --bg-animated: linear-gradient(-45deg, #1a1a1a, #2d2d2d, #1a1a1a, #0f0f0f);
+}
+
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 body {
@@ -27,7 +34,9 @@ body {
     height: 100vh;
     padding: 20px;
     box-sizing: border-box;
-    background: radial-gradient(circle at center, #2d2d2d 0%, #1a1a1a 100%);
+    background: var(--bg-animated);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
 }
 
 h1 { color: var(--secondary); text-shadow: 2px 2px #000; }
@@ -56,7 +65,7 @@ h1 { color: var(--secondary); text-shadow: 2px 2px #000; }
 }
 
 #game-screen {
-    flex-direction: row;
+    flex-direction: row-reverse; /* Moves sidebar to the right */
     padding: 0;
 }
 
@@ -64,7 +73,7 @@ h1 { color: var(--secondary); text-shadow: 2px 2px #000; }
     width: var(--sidebar-width);
     height: 100vh;
     background: #111;
-    border-right: 2px solid var(--primary);
+    border-left: 2px solid var(--primary); /* Border on the left side now */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -86,6 +95,16 @@ h1 { color: var(--secondary); text-shadow: 2px 2px #000; }
     flex-direction: column;
     height: 100vh;
     position: relative;
+    justify-content: center;
+    align-items: center;
+}
+
+#main-game-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 30px;
 }
 
 .nav-btn {
@@ -108,6 +127,7 @@ h1 { color: var(--secondary); text-shadow: 2px 2px #000; }
     display: flex;
     justify-content: center;
     align-items: center;
+    margin: auto;
     cursor: pointer;
     filter: drop-shadow(0 0 20px var(--primary));
     transition: transform 0.05s ease-out;

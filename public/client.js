@@ -20,6 +20,9 @@ const joinBtn = document.getElementById('joinBtn');
 const clickTarget = document.getElementById('click-target');
 const shopContainer = document.getElementById('shop-items');
 const trollContainer = document.getElementById('troll-items');
+const modalOverlay = document.getElementById('modal-overlay');
+const modalClose = document.getElementById('modal-close');
+const modalContent = document.getElementById('modal-content-area');
 
 // State
 let shopItems = {};
@@ -94,19 +97,37 @@ function handleShopClick(e) {
 shopContainer.addEventListener('pointerdown', handleShopClick);
 trollContainer.addEventListener('pointerdown', handleShopClick);
 
-// Emoji Navigation / Tabs
+// Modal & Sidebar Logic
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('pointerdown', () => {
         const targetTab = btn.dataset.tab;
         
-        // Switch Tabs
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        document.getElementById(targetTab).classList.add('active');
+        if (targetTab === 'main-game-area') {
+            // Just close modal if it's open
+            modalOverlay.classList.add('modal-hidden');
+        } else {
+            // Show Modal
+            const contentSource = document.getElementById(targetTab);
+            if (contentSource) {
+                // Clone the hidden content into the modal
+                modalContent.innerHTML = contentSource.innerHTML;
+                modalOverlay.classList.remove('modal-hidden');
+                
+                // Re-link shop events for the newly injected HTML
+                const newShop = modalContent.querySelector('#shop-items');
+                const newTroll = modalContent.querySelector('#troll-items');
+                if (newShop) newShop.addEventListener('pointerdown', handleShopClick);
+                if (newTroll) newTroll.addEventListener('pointerdown', handleShopClick);
+            }
+        }
         
-        // Update Nav Buttons
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
     });
+});
+
+// Close modal on X or clicking outside
+modalClose.addEventListener('click', () => modalOverlay.classList.add('modal-hidden'));
+modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) modalOverlay.classList.add('modal-hidden');
 });
 
 function calculateCost(item, owned) {
