@@ -126,6 +126,25 @@ function triggerJumpscare(imageUrl, soundUrl) { // Added parameters
     }, 1200); // Slightly shorter duration for a "snappier" jumpscare
 }
 
+function createFloatingEmoji(emoji) {
+    const el = document.createElement('div');
+    el.innerText = emoji;
+    el.style.position = 'fixed';
+    el.style.left = (Math.random() * 80 + 10) + 'vw';
+    el.style.top = '100vh';
+    el.style.fontSize = '4rem';
+    el.style.zIndex = '10000';
+    el.style.pointerEvents = 'none';
+    el.style.transition = 'all 2.5s cubic-bezier(0.1, 0.25, 0.1, 1)';
+    document.body.appendChild(el);
+    
+    setTimeout(() => {
+        el.style.top = '-15vh';
+        el.style.transform = `rotate(${Math.random() * 360}deg)`;
+        setTimeout(() => el.remove(), 2600);
+    }, 50);
+}
+
 socket.on('connect', () => {
     console.log('Connected to server with ID:', socket.id);
 });
@@ -224,6 +243,7 @@ const leaveBtn = document.getElementById('leaveBtn');
 if (leaveBtn) {
     leaveBtn.addEventListener('click', () => {
         socket.emit('leaveRoom');
+        window.location.reload(); // Refresh to ensure clean state
     });
 }
 
@@ -384,12 +404,16 @@ socket.on('trollEvent', (event) => {
         freeze: `❄️ ${event.target} is frozen for ${event.duration} sec!`,
         swap: `🔄 Scores swapped between ${event.players[0]} and ${event.players[1]}!`,
         reduce: `📉 ${event.target}'s multiplier decreased!`,
-        spam: `😂 ${event.target} is being spammed with ${event.emoji}!`,
+        spamNotification: `😂 ${event.target} is being spammed with emojis!`,
         tax: `💰 ${event.from} collected ${event.amount} in taxes!`,
         loudSoundTroll: `🔊 ${event.from} trolled ${event.targetName} with a loud sound!`,
         scramble: `🌀 ${event.targetName}'s controls were scrambled!`,
         jumpscare: `👻 ${event.from} triggered a jumpscare!`
     };
+
+    if (event.type === 'spam' && event.isTarget) {
+        createFloatingEmoji(event.emoji);
+    }
 
     if (event.type === 'scramble' && event.target === socket.id) {
         const nav = document.getElementById('emoji-nav');

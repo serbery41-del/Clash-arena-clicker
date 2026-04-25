@@ -250,14 +250,18 @@ function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
 
     rooms[code].timers.gameTimer = setInterval(() => {
         const room = rooms[code];
-        if (room && room.gameActive && room.timeLeft > 0) {
-            rooms[code].timeLeft--;
-            io.to(code).emit('updateTimer', room.timeLeft);
-        } else if (rooms[code]) {
-            rooms[code].gameActive = false;
-            io.to(code).emit('gameOver', rooms[code].players);
-            clearInterval(rooms[code].timers.gameTimer);
-            clearInterval(rooms[code].timers.randomEventInterval);
+        if (!room) return;
+
+        if (room.gameActive) {
+            if (room.timeLeft > 0) {
+                room.timeLeft--;
+                io.to(code).emit('updateTimer', room.timeLeft);
+            } else {
+                room.gameActive = false;
+                io.to(code).emit('gameOver', room.players);
+                clearInterval(room.timers.gameTimer);
+                clearInterval(room.timers.randomEventInterval);
+            }
         }
     }, 1000);
 }
@@ -327,17 +331,18 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
         case 'spam':
             const emojis = ['😂', '🤡', '💀', '🙃', '😎'];
             let spamCount = 0;
-            const totalSpam = buyer.items['spam'] || 1; // Increases by 1 each time it's bought
+            const totalSpam = 20; // 20 emojis for a real "spam" effect
             const spamInterval = setInterval(() => {
                 if (spamCount >= totalSpam) {
                     clearInterval(spamInterval);
                     return;
                 }
-                io.to(room.code).emit('trollEvent', { 
-                    type: 'spam', target: target.name, emoji: emojis[Math.floor(Math.random() * emojis.length)] 
+                io.to(target.id).emit('trollEvent', { 
+                    type: 'spam', isTarget: true, emoji: emojis[Math.floor(Math.random() * emojis.length)] 
                 });
                 spamCount++;
-            }, 500);
+            }, 150);
+            io.to(room.code).emit('trollEvent', { type: 'spamNotification', target: target.name });
             break;
             
         case 'loudSoundTroll':
