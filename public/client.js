@@ -13,6 +13,7 @@ socket.on('error', (msg) => {
 const lobbyScreen = document.getElementById('lobby-screen');
 const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
+const lobbyStatus = document.getElementById('lobby-status');
 
 const startBtn = document.getElementById('startBtn');
 const joinBtn = document.getElementById('joinBtn');
@@ -28,14 +29,11 @@ let playerItems = {};
 joinBtn.addEventListener('pointerdown', () => {
     const playerName = document.getElementById('playerName').value.trim();
     const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
-    const gameMinutes = document.getElementById('game-minutes').value;
-    const maxPlayers = document.getElementById('max-players').value;
 
     if (playerName && roomCode) {
         socket.emit('joinRoom', { 
             playerName, 
-            roomCode,
-            settings: { duration: gameMinutes * 60, maxPlayers: parseInt(maxPlayers) }
+            roomCode
         });
         
         document.getElementById('current-room').innerText = roomCode;
@@ -52,12 +50,12 @@ startBtn.addEventListener('pointerdown', () => {
 socket.on('roomUpdate', ({ players, hostId }) => {
     isHost = socket.id === hostId;
     const playerCount = Object.keys(players).length;
-    
+
     if (isHost) {
         startBtn.style.display = 'block';
-        startBtn.disabled = playerCount < 2;
-        startBtn.innerText = playerCount < 2 ? "Waiting for players..." : "Start Game";
+        startBtn.innerText = "Start Game";
     }
+    
     document.getElementById('lobby-status').innerText = `${playerCount} players in lobby`;
 });
 

@@ -1,37 +1,42 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body { 
     margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; 
-    background: #1a1a2e; color: white; overflow: hidden;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white; overflow: hidden;
     height: 100vh; width: 100vw;
 }
 .container {
     display: flex; flex-direction: column; align-items: center;
     height: 100%; width: 100%; padding: 15px;
 }
-h1 { margin: 10px 0; font-size: 1.8rem; text-shadow: 0 0 10px #00d2ff; }
+h1 { margin: 10px 0; font-size: 2rem; text-shadow: 0 4px 10px rgba(0,0,0,0.3); font-weight: 800; letter-spacing: -1px; }
 
 /* Lobby */
 .input-group { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
-input, select { 
-    padding: 12px; border-radius: 8px; border: none; font-size: 1rem; 
-    background: #16213e; color: white; min-height: 48px;
+input { 
+    padding: 14px; border-radius: 15px; border: 2px solid rgba(255,255,255,0.2); font-size: 1rem; 
+    background: rgba(255,255,255,0.1); color: white; min-height: 50px; outline: none;
+    transition: border-color 0.3s;
 }
+input:focus { border-color: #ff2e63; }
+
 .settings-panel { 
-    background: #0f3460; padding: 15px; border-radius: 12px; 
+    background: rgba(0,0,0,0.2); padding: 20px; border-radius: 20px; 
     width: 100%; max-width: 300px; margin: 15px 0; 
+    backdrop-filter: blur(10px);
 }
-.settings-panel label { display: block; margin: 10px 0; font-size: 0.9rem; }
 
 /* Buttons */
 .primary-btn {
-    background: linear-gradient(45deg, #e94560, #ff2e63);
-    color: white; border: none; padding: 15px 30px; border-radius: 12px;
-    font-weight: bold; cursor: pointer; min-height: 50px; width: 100%; max-width: 300px; margin-top: 10px;
+    background: #ff2e63; color: white; border: none; padding: 15px 30px; border-radius: 15px;
+    font-weight: bold; cursor: pointer; min-height: 55px; width: 100%; max-width: 300px; margin-top: 10px;
+    box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4); transform: scale(1); transition: transform 0.1s;
 }
+.primary-btn:active { transform: scale(0.98); }
 
 /* Game UI */
 header { display: flex; justify-content: space-between; width: 100%; font-weight: bold; padding-bottom: 10px; }
-#timer { color: #e94560; font-size: 1.2rem; }
+#timer { background: rgba(0,0,0,0.3); padding: 5px 15px; border-radius: 20px; font-size: 1.1rem; }
 
 .tab-content { display: none; flex-direction: column; width: 100%; flex: 1; overflow-y: auto; padding-bottom: 70px; }
 .tab-content.active { display: flex; }
@@ -39,33 +44,36 @@ header { display: flex; justify-content: space-between; width: 100%; font-weight
 #click-target-container { flex: 1; display: flex; justify-content: center; align-items: center; }
 #click-target { 
     width: 70vw; max-width: 300px; height: auto; 
-    transition: transform 0.05s; cursor: pointer; filter: drop-shadow(0 0 20px rgba(0, 210, 255, 0.5));
+    transition: transform 0.05s; cursor: pointer; 
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.3));
 }
 
-.stats-bar { text-align: center; font-size: 1.5rem; margin-bottom: 10px; }
-.sub-stats { display: flex; justify-content: space-around; font-size: 0.8rem; color: #aaa; }
+.stats-bar { text-align: center; font-size: 2rem; margin-bottom: 10px; font-weight: 800; }
+.sub-stats { display: flex; justify-content: space-around; font-size: 0.8rem; color: rgba(255,255,255,0.7); }
 
 /* Shop & Trolls */
 .scroll-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
 .shop-btn {
     display: flex; justify-content: space-between; align-items: center;
-    background: #16213e; padding: 12px; border-radius: 10px; border: 1px solid #0f3460;
+    background: rgba(255,255,255,0.1); padding: 14px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);
     color: white; cursor: pointer; min-height: 55px;
 }
 .shop-btn .info { display: flex; flex-direction: column; align-items: flex-start; }
 .shop-btn .name { font-weight: bold; font-size: 0.9rem; }
-.shop-btn .cost { font-size: 0.8rem; color: #00d2ff; }
+.shop-btn .cost { font-size: 0.8rem; color: #00ffcc; font-weight: bold; }
 
 /* Emoji Navigation */
 #emoji-nav {
-    position: fixed; bottom: 0; left: 0; right: 0;
-    height: 65px; background: #0f3460;
+    position: fixed; bottom: 15px; left: 15px; right: 15px;
+    height: 65px; background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(20px);
     display: flex; justify-content: space-around; align-items: center;
-    border-top: 2px solid #e94560; z-index: 100;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 25px; z-index: 100;
 }
 .nav-btn { 
     background: none; border: none; font-size: 1.8rem; cursor: pointer; 
-    padding: 10px; transition: transform 0.2s; 
+    padding: 10px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
 }
 .nav-btn.active { transform: translateY(-5px) scale(1.2); }
 
@@ -79,5 +87,5 @@ header { display: flex; justify-content: space-between; width: 100%; font-weight
 #leaderboard { list-style: none; padding: 0; width: 100%; }
 #leaderboard li {
     display: flex; justify-content: space-between; padding: 12px;
-    border-bottom: 1px solid #16213e; font-size: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 1rem;
 }
