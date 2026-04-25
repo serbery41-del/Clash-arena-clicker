@@ -122,6 +122,10 @@ h1 { color: var(--secondary); text-shadow: 2px 2px #000; }
     cursor: pointer;
     filter: drop-shadow(0 0 20px var(--primary));
     transition: transform 0.05s ease-out;
+    /* Fix for mobile blue box highlight */
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none; /* Disable callout on long tap */
 }
 
 .colorful-container:active {
@@ -190,6 +194,48 @@ h3 { text-align: center; color: var(--accent); margin-top: 0; border-bottom: 1px
     border-radius: 10px;
     font-weight: bold;
     border: 1px solid var(--secondary);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    body {
+        padding: 0; /* Remove body padding on small screens */
+    }
+
+    .container {
+        padding: 10px; /* Adjust container padding */
+    }
+
+    #game-screen {
+        flex-direction: column; /* Stack panels vertically */
+        overflow-y: auto; /* Allow scrolling if content overflows vertically */
+        height: 100vh; /* Ensure game screen takes full height */
+    }
+
+    #left-panel, #right-panel {
+        width: 100%; /* Take full width */
+        height: auto; /* Adjust height based on content */
+        max-height: 35vh; /* Limit height to prevent one panel from dominating */
+        border-right: none; /* Remove side borders */
+        border-left: none;
+        border-bottom: 1px solid rgba(255,255,255,0.1); /* Add bottom border for separation */
+    }
+
+    #right-panel {
+        order: 3; /* Move to bottom for "quick upgrade" access */
+        border-top: 1px solid rgba(255,255,255,0.1); /* Add top border for separation */
+        border-bottom: none;
+    }
+
+    #left-panel {
+        order: 1; /* Move to top */
+    }
+
+    #game-content {
+        order: 2; /* Keep in middle */
+        width: 100%;
+        min-height: 30vh; /* Ensure click area has enough space */
+    }
 }
 
 .troll-notification {

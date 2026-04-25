@@ -244,6 +244,15 @@ socket.on('gameOver', (players) => {
     const playersArray = Object.values(players).sort((a, b) => b.score - a.score);
 
     playersArray.forEach((p, index) => {
+        if (p.id === socket.id) {
+            const resultHeader = document.createElement('h2');
+            if (index === 0) {
+                resultHeader.innerText = "🏆 You Win! 🏆";
+            } else {
+                resultHeader.innerText = "Better luck next time!";
+            }
+            gameOverScreen.prepend(resultHeader);
+        }
         const li = document.createElement('li');
         li.innerHTML = `<strong>#${index + 1} ${p.name}</strong> - Final Score: ${p.score}`;
         resultsUI.appendChild(li);
