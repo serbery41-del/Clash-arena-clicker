@@ -38,13 +38,10 @@
 
     <!-- Game Screen -->
     <div id="game-screen" class="container" style="display: none;">
-        <nav id="sidebar">
-            <div class="sidebar-header">MENU</div>
-            <button class="nav-btn active" data-tab="main-game-area">💎 Game</button>
-            <button class="nav-btn" data-tab="shop-area">🛒 Shop</button>
-            <button class="nav-btn" data-tab="troll-area">👿 Trolls</button>
-            <button class="nav-btn" data-tab="leaderboard-area">🏆 Ranks</button>
-        </nav>
+        <aside id="left-panel">
+            <h3>Rankings 🏆</h3>
+            <ul id="leaderboard"></ul>
+        </aside>
 
         <main id="game-content">
             <header>
@@ -70,22 +67,15 @@
                 </div>
             </div>
         </main>
-    </div>
 
-    <!-- Modal Pop-up Windows -->
-    <div id="modal-overlay" class="modal-hidden">
-        <div class="modal-window">
-            <button id="modal-close">×</button>
-            <div id="modal-content-area">
-                <!-- Content injected here via JS -->
-            </div>
-        </div>
+        <aside id="right-panel">
+            <h3>Upgrades 🛒</h3>
+            <div id="shop-items" class="scroll-list"></div>
+            <br>
+            <h3>Trolls 👿</h3>
+            <div id="troll-items" class="scroll-list"></div>
+        </aside>
     </div>
-
-    <!-- Hidden Templates for Modals -->
-    <div id="shop-area" style="display: none;"><h3>Upgrades 🛒</h3><div id="shop-items" class="scroll-list"></div></div>
-    <div id="troll-area" style="display: none;"><h3>Trolls 👿</h3><div id="troll-items" class="scroll-list"></div></div>
-    <div id="leaderboard-area" style="display: none;"><h3>Rankings 🏆</h3><ul id="leaderboard"></ul></div>
 
     <div id="game-over-screen" class="container" style="display: none;">
         <h1>Game Over!</h1>
