@@ -1,5 +1,124 @@
 const socket = io();
 let isHost = false;
+let currentMode = 'classic';
+let audioCtx = null;
+
+// Initialize AudioContext on first user interaction
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtx;
+}
+
+function playClickSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+}
+
+function playBuySound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.15);
+}
+
+function playLuckySound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(659, audioCtx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(784, audioCtx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+}
+
+function playTrollSound() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(100, audioCtx.currentTime + 0.1);
+    osc.frequency.setValueAtTime(200, audioCtx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+}
+
+function playGameOverSound() {
+    if (!audioCtx) return;
+    const notes = [392, 440, 494, 523];
+    notes.forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + i * 0.15);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.15 + 0.2);
+        osc.start(audioCtx.currentTime + i * 0.15);
+        osc.stop(audioCtx.currentTime + i * 0.15 + 0.2);
+    });
+}
+
+function triggerJumpscare() {
+    const overlay = document.getElementById('jumpscare-overlay');
+    const img = document.getElementById('jumpscare-img');
+    
+    const scaryImages = [
+        'https://images.unsplash.com/photo-1509248961158-e54f6934749c?w=500',
+        'https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?w=500',
+        'https://images.unsplash.com/photo-1505635552518-3448ff116af3?w=500'
+    ];
+    
+    img.src = scaryImages[Math.floor(Math.random() * scaryImages.length)];
+    overlay.style.display = 'flex';
+    
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(80, audioCtx.currentTime);
+    osc.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+    osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.5);
+    
+    setTimeout(() => {
+        overlay.style.display = 'none';
+    }, 2000);
+}
 
 socket.on('connect', () => {
     console.log('Connected to server with ID:', socket.id);
@@ -15,17 +134,10 @@ const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 const lobbyStatus = document.getElementById('lobby-status');
 
-const startBtn = document.getElementById('startBtn');
-const joinBtn = document.getElementById('joinBtn');
-const clickTarget = document.getElementById('click-target');
+let startBtn = null;
+let clickTarget = null;
 const shopContainer = document.getElementById('shop-items');
 const trollContainer = document.getElementById('troll-items');
-
-// Customization UI Elements
-const avatarUrlInput = document.getElementById('avatarUrl');
-const cursorStyleInput = document.getElementById('cursorStyle');
-const saveCustomizationBtn = document.getElementById('saveCustomizationBtn');
-const myAvatar = document.getElementById('my-avatar');
 
 // State
 let shopItems = {};
@@ -39,18 +151,14 @@ function joinGame(mode, cardSelector) {
     const duration = card.querySelector('.time-input').value;
     const maxPlayers = card.querySelector('.players-input')?.value || 4;
     
-    const avatar = localStorage.getItem('playerAvatar') || '';
-    const cursor = localStorage.getItem('playerCursor') || '';
-
     if (playerName && roomCode) {
+        currentMode = mode;
         socket.emit('joinRoom', { 
             playerName, 
             roomCode,
             mode,
             duration: parseInt(duration),
-            maxPlayers: parseInt(maxPlayers),
-            avatar,
-            cursor
+            maxPlayers: parseInt(maxPlayers)
         });
         document.getElementById('current-room').innerText = roomCode;
     } else {
@@ -58,30 +166,25 @@ function joinGame(mode, cardSelector) {
     }
 }
 
-document.querySelector('.join-classic').addEventListener('pointerdown', () => {
+document.querySelector('.join-classic').addEventListener('click', () => {
+    initAudio();
     joinGame('classic', '.mode-card:not(.team-mode-card)');
 });
 
-document.querySelector('.join-team').addEventListener('pointerdown', () => {
+document.querySelector('.join-team').addEventListener('click', () => {
+    initAudio();
     joinGame('teams', '.team-mode-card');
 });
 
-// Customization Logic
-saveCustomizationBtn.addEventListener('pointerdown', () => {
-    localStorage.setItem('playerAvatar', avatarUrlInput.value.trim());
-    localStorage.setItem('playerCursor', cursorStyleInput.value.trim());
-    alert('Customization saved!');
-    applyCursor(cursorStyleInput.value.trim());
-});
-
-// Load saved customization on page load
-window.addEventListener('load', () => {
-    avatarUrlInput.value = localStorage.getItem('playerAvatar') || '';
-    cursorStyleInput.value = localStorage.getItem('playerCursor') || '';
-});
-
 // Start Game logic
-startBtn.addEventListener('pointerdown', () => {
+startBtn = document.createElement('button');
+startBtn.id = 'startBtn';
+startBtn.className = 'primary-btn';
+startBtn.innerText = 'Start Game';
+startBtn.style.display = 'none';
+document.getElementById('lobby-screen').appendChild(startBtn);
+
+startBtn.addEventListener('click', () => {
     socket.emit('startGame');
 });
 
@@ -93,26 +196,15 @@ socket.on('roomUpdate', ({ players, hostId, gameActive }) => {
         startBtn.style.display = 'block';
         startBtn.innerText = "Start Game";
     } else {
-        startBtn.style.display = 'none'; // Hide start button for non-hosts
+        startBtn.style.display = 'none';
     }
     
-    // If the game is already active when a player joins, transition them to the game screen
     if (gameActive) {
         lobbyScreen.style.display = 'none';
         gameScreen.style.display = 'flex';
-        // The server will send 'gameState' and 'shopItems' shortly after 'roomUpdate'
-        // which will populate the game screen correctly.
-        document.getElementById('current-room').innerText = document.getElementById('roomCode').value.trim().toUpperCase();
+        document.getElementById('current-room').innerText = socket.roomCode || '';
     }
 
-    // Update player avatars/cursors on room update
-    Object.values(players).forEach(p => {
-        if (p.id === socket.id) {
-            applyCursor(p.cursor);
-            if (myAvatar) myAvatar.src = p.avatar;
-        }
-    });
-    
     document.getElementById('lobby-status').innerText = `${playerCount} players in lobby`;
 });
 
@@ -124,7 +216,7 @@ socket.on('gameStarted', () => {
 // Leave Room logic
 const leaveBtn = document.getElementById('leaveBtn');
 if (leaveBtn) {
-    leaveBtn.addEventListener('pointerdown', () => {
+    leaveBtn.addEventListener('click', () => {
         socket.emit('leaveRoom');
     });
 }
@@ -135,17 +227,24 @@ socket.on('leftRoom', () => {
 });
 
 // 2. Click the Gem
-clickTarget.addEventListener('pointerdown', (e) => {
-    e.preventDefault(); // Prevent accidental zoom/scrolling
+function getClickTarget() {
+    if (!clickTarget) clickTarget = document.getElementById('click-target');
+    return clickTarget;
+}
+
+getClickTarget().addEventListener('click', (e) => {
+    e.preventDefault();
     socket.emit('click');
-    // Visual Polish: Squash effect
-    clickTarget.style.transform = 'scale(0.95)';
+    playClickSound();
+    
+    // Visual squash effect
+    getClickTarget().style.transform = 'scale(0.95)';
     setTimeout(() => {
-        clickTarget.style.transform = 'scale(1)';
+        getClickTarget().style.transform = 'scale(1)';
     }, 100);
 });
 
-// 3. Buy Upgrade - Handle all shop buttons
+// 3. Buy Upgrade
 function handleShopClick(e) {
     const btn = e.target.closest('.shop-btn');
     if (!btn) return;
@@ -154,13 +253,13 @@ function handleShopClick(e) {
     const item = shopItems[itemId];
     if (!item) return;
 
-    // Get selected target for trolls
     const targetId = document.getElementById('troll-target-select').value;
     socket.emit('buyUpgrade', { itemId, targetId });
+    playBuySound();
 }
 
-shopContainer.addEventListener('pointerdown', handleShopClick);
-trollContainer.addEventListener('pointerdown', handleShopClick);
+shopContainer.addEventListener('click', handleShopClick);
+trollContainer.addEventListener('click', handleShopClick);
 
 function calculateCost(item, owned) {
     return Math.floor(item.baseCost * Math.pow(item.costMultiplier, owned));
@@ -210,6 +309,168 @@ function updateShopUI() {
         if (ownedLabel) ownedLabel.innerText = owned;
     });
 }
+
+// 5. Update Game State
+socket.on('gameState', (players) => {
+    const leaderboardUI = document.getElementById('leaderboard');
+    const targetSelect = document.getElementById('troll-target-select');
+    const currentTarget = targetSelect.value;
+    
+    leaderboardUI.innerHTML = '';
+    targetSelect.innerHTML = '<option value="random">Random Opponent</option>';
+
+    const playersArray = Object.values(players);
+    playersArray.sort((a, b) => b.score - a.score);
+
+    playersArray.forEach((p, index) => {
+        const teamTag = p.team ? `<span class="team-tag tag-${p.team}">${p.team.toUpperCase()}</span> ` : '';
+        
+        const li = document.createElement('li');
+        li.className = p.team ? `team-${p.team}` : '';
+        li.innerHTML = `<span>#${index + 1} ${teamTag}${p.name}</span> <span>${p.score}</span>`;
+        leaderboardUI.appendChild(li);
+
+        if (p.id !== socket.id) {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = p.name + (p.team ? ` (${p.team})` : '');
+            targetSelect.appendChild(opt);
+        }
+
+        if (p.id === socket.id) {
+            document.getElementById('my-score').innerText = `Score: ${p.score}`;
+            document.getElementById('my-multiplier').innerText = `Multiplier: x${p.multiplier}`;
+            document.getElementById('my-clickPower').innerText = `Click Power: x${p.clickPower}`;
+            document.getElementById('my-autoClickers').innerText = `Auto Clickers: ${p.autoClickers}`;
+            document.getElementById('my-luckChance').innerText = `Luck: ${p.luckChance}%`;
+            
+            playerItems = p.items;
+            updateShopUI();
+            
+            const allButtons = document.querySelectorAll('.shop-btn');
+            allButtons.forEach(btn => {
+                const itemId = btn.dataset.item;
+                const item = shopItems[itemId];
+                if (!item) return;
+                const owned = playerItems[itemId] || 0;
+                const cost = calculateCost(item, owned);
+                
+                btn.style.opacity = p.score < cost ? '0.5' : '1';
+            });
+        }
+    });
+
+    if ([...targetSelect.options].some(o => o.value === currentTarget)) targetSelect.value = currentTarget;
+});
+
+// 6. Troll Events
+socket.on('trollEvent', (event) => {
+    if (!event) return;
+    playTrollSound();
+    
+    const messages = {
+        steal: `🔥 ${event.from} stole ${event.amount} pts from ${event.to}!`,
+        freeze: `❄️ ${event.target} is frozen for ${event.duration} sec!`,
+        swap: `🔄 Scores swapped between ${event.players[0]} and ${event.players[1]}!`,
+        reduce: `📉 ${event.target}'s multiplier decreased!`,
+        spam: `😂 ${event.target} is being spammed with ${event.emoji}!`,
+        tax: `💰 ${event.from} collected ${event.amount} in taxes!`,
+        loudSoundTroll: `🔊 ${event.from} trolled ${event.targetName} with a loud sound!`,
+        scramble: `🌀 ${event.targetName}'s controls were scrambled!`,
+        jumpscare: `👻 ${event.from} triggered a jumpscare!`
+    };
+
+    if (event.type === 'scramble' && event.target === socket.id) {
+        const nav = document.getElementById('emoji-nav');
+        if (nav) {
+            nav.style.flexDirection = nav.style.flexDirection === 'row-reverse' ? 'row' : 'row-reverse';
+            setTimeout(() => { nav.style.flexDirection = 'row'; }, 10000);
+        }
+    }
+
+    if (event.type === 'jumpscare' && event.target === socket.id) {
+        triggerJumpscare();
+    }
+
+    if (event.type === 'loudSoundTroll' && event.target === socket.id) {
+        const trollOverlay = document.getElementById('troll-overlay');
+        const trollImage = document.getElementById('troll-image');
+        const trollSound = document.getElementById('troll-sound');
+
+        if (trollOverlay && trollImage && trollSound) {
+            trollImage.src = event.imageUrl;
+            trollSound.src = event.soundUrl;
+            trollOverlay.style.display = 'flex';
+            trollSound.play();
+            setTimeout(() => {
+                trollOverlay.style.display = 'none';
+            }, 3000);
+        }
+    }
+    if (messages[event.type]) showNotification(messages[event.type]);
+});
+
+function showNotification(msg) {
+    const notif = document.createElement('div');
+    notif.className = 'troll-notification';
+    notif.innerText = msg;
+    document.body.appendChild(notif);
+    notif.style.opacity = '1';
+    
+    setTimeout(() => {
+        notif.style.opacity = '0';
+        setTimeout(() => notif.remove(), 500);
+    }, 2500);
+}
+
+// 7. Lucky Hit
+socket.on('luckyHit', ({ playerId, points }) => {
+    console.log(`Lucky hit! +${points} bonus points`);
+    playLuckySound();
+});
+
+// 8. Frozen Message
+socket.on('frozenMessage', ({ remaining }) => {
+    showNotification(`❄️ You are frozen! ${remaining}s left`);
+});
+
+// 9. Update Timer
+socket.on('updateTimer', (timeLeft) => {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    document.getElementById('timer').innerText = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+});
+
+// 10. Random Event
+socket.on('randomEvent', (event) => {
+    showNotification(`✨ Random Event: ${event.message}`);
+});
+
+// 11. Game Over
+socket.on('gameOver', (players) => {
+    playGameOverSound();
+    gameScreen.style.display = 'none';
+    gameOverScreen.style.display = 'flex';
+
+    const resultsUI = document.getElementById('final-results');
+    const playersArray = Object.values(players).sort((a, b) => b.score - a.score);
+
+    playersArray.forEach((p, index) => {
+        if (p.id === socket.id) {
+            const resultHeader = document.createElement('h2');
+            if (index === 0) {
+                resultHeader.innerText = "🏆 You Win! 🏆";
+            } else {
+                resultHeader.innerText = "Better luck next time!";
+            }
+            gameOverScreen.prepend(resultHeader);
+        }
+        const li = document.createElement('li');
+        li.innerHTML = `<strong>#${index + 1} ${p.name}</strong> - Final Score: ${p.score}`;
+        resultsUI.appendChild(li);
+    });
+});
 
 // 5. Update Game State (Leaderboard & Score)
 socket.on('gameState', (players) => {

@@ -10,29 +10,52 @@
     <!-- Lobby Screen -->
     <div id="lobby-screen" class="container">
         <h1>🌈 Chroma Arena Clicker</h1>
-        <div class="input-group">
-            <input type="text" id="playerName" placeholder="Your Name" maxlength="12">
-            <input type="text" id="roomCode" placeholder="Room Code (4 chars)" maxlength="4">
+        
+        <!-- Mode Selection Cards -->
+        <div class="mode-cards">
+            <!-- Classic Mode -->
+            <div class="mode-card">
+                <h3>🎯 Classic</h3>
+                <p>Free-for-all! Be the first to click.</p>
+                <div class="input-group">
+                    <input type="text" class="name-input" placeholder="Your Name" maxlength="12">
+                    <input type="text" class="code-input" placeholder="Room Code" maxlength="4">
+                </div>
+                <div class="mode-settings">
+                    <input type="number" class="time-input" value="5" min="1" max="60" title="Minutes">
+                    <select class="players-input">
+                        <option value="2">2 Players</option>
+                        <option value="3">3 Players</option>
+                        <option value="4" selected>4 Players</option>
+                        <option value="5">5 Players</option>
+                        <option value="6">6 Players</option>
+                        <option value="7">7 Players</option>
+                        <option value="8">8 Players</option>
+                    </select>
+                </div>
+                <button class="join-classic primary-btn">Create / Join</button>
+            </div>
+            
+            <!-- Team Battle Mode -->
+            <div class="mode-card team-mode-card">
+                <h3>⚔️ Team Battle</h3>
+                <p>Red vs Blue! Teams are random.</p>
+                <div class="input-group">
+                    <input type="text" class="name-input" placeholder="Your Name" maxlength="12">
+                    <input type="text" class="code-input" placeholder="Room Code" maxlength="4">
+                </div>
+                <div class="mode-settings">
+                    <input type="number" class="time-input" value="5" min="1" max="60" title="Minutes">
+                    <select class="players-input">
+                        <option value="4">4 Players</option>
+                        <option value="6" selected>6 Players</option>
+                        <option value="8">8 Players</option>
+                    </select>
+                </div>
+                <button class="join-team primary-btn">Create / Join</button>
+            </div>
         </div>
         
-        <div id="host-settings" class="settings-panel">
-            <h3>Host Settings</h3>
-            <label>Game Minutes: <input type="number" id="game-minutes" value="5" min="1" max="60"></label>
-            <label>Max Players: 
-                <select id="max-players">
-                    <option value="2">2 Players</option>
-                    <option value="3">3 Players</option>
-                    <option value="4" selected>4 Players</option>
-                    <option value="5">5 Players</option>
-                    <option value="6">6 Players</option>
-                    <option value="7">7 Players</option>
-                    <option value="8">8 Players</option>
-                </select>
-            </label>
-        </div>
-
-        <button id="joinBtn" class="primary-btn">Join / Create Room</button>
-        <button id="startBtn" class="primary-btn" style="display: none;">Start Game</button>
         <p id="lobby-status"></p>
     </div>
 
@@ -89,6 +112,24 @@
         <ul id="final-results"></ul>
         <button onclick="location.reload()" class="primary-btn">Play Again</button>
     </div>
+
+    <!-- Jumpscare Overlay -->
+    <div id="jumpscare-overlay" class="jumpscare-overlay">
+        <img id="jumpscare-img" src="" alt="SCARY!">
+    </div>
+
+    <!-- Troll Overlay -->
+    <div id="troll-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+        <img id="troll-image" style="max-width: 80%; max-height: 80%; border-radius: 10px;">
+        <audio id="troll-sound"></audio>
+    </div>
+
+    <!-- Sound Effects -->
+    <audio id="click-sound" src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleRYGIZ3a27BqFQMkl9jVu3EWAySQ1tS1bRYDJI7S0rFvFgMkj9HRsW4WAySO0NCwbhYDJI7Q0LBuFgMkj9DPsG4WAySP0M+wbhYDJI/Qz7BuFgMkj9DPsG4WAySP0M+wbm4=" preload="auto"></audio>
+    <audio id="buy-sound" preload="auto"></audio>
+    <audio id="troll-sound-effect" preload="auto"></audio>
+    <audio id="lucky-sound" preload="auto"></audio>
+    <audio id="gameover-sound" preload="auto"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
