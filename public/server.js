@@ -102,7 +102,8 @@ io.on('connection', (socket) => {
         io.to(code).emit('gameState', rooms[code].players);
         io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
         io.to(code).emit('shopItems', SHOP_ITEMS);
-        io.to(code).emit('updateTimer', rooms[code].timeLeft); // Send initial timer value to new players
+        // Fix: Ensure timer displays immediately on join
+        socket.emit('updateTimer', rooms[code].timeLeft); 
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
 
@@ -168,6 +169,7 @@ io.on('connection', (socket) => {
         io.to(socket.roomCode).emit('gameState', room.players);
     });
 
+    // Fix: Clear intervals on leave/disconnect
     socket.on('leaveRoom', () => {
         if (socket.roomCode && rooms[socket.roomCode]) {
             handlePlayerDisconnect(socket, socket.roomCode);
@@ -221,6 +223,7 @@ function handlePlayerDisconnect(socket, roomCode) {
     // Clean up empty rooms
     if (Object.keys(room.players).length === 0) {
         clearInterval(room.timers.gameTimer);
+        clearInterval(room.timers.randomEventInterval);
         delete rooms[roomCode];
     } else if (socket.id === room.hostId) {
         // Reassign host
@@ -401,7 +404,7 @@ function triggerRandomEvent(roomCode, isChaos) {
     if (!room || !room.gameActive || Object.keys(room.players).length === 0) return;
 
     let eventTypes = ['scoreBoostGlobal', 'scoreDrainGlobal', 'multiplierBoostRandom', 'freezeRandom'];
-    if (isChaos) eventTypes = [...eventTypes, 'chaos_equalizer', 'chaos_inflation', 'chaos_freeUpgrade'];
+    if (isChaos) eventTypes = [...eventTypes, 'chaos_equalizer', 'chaos_inflation', 'chaos_freeUpgrade', 'chaos_goldenFreddy'];
 
     const randomEventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
     const playersArray = Object.values(room.players);
@@ -452,6 +455,17 @@ function triggerRandomEvent(roomCode, isChaos) {
                 p.items['autoClicker'] = (p.items['autoClicker'] || 0) + 1;
             });
             message = `CHAOS: A gift from above! Everyone received a free Auto Clicker!`;
+            break;
+        case 'chaos_goldenFreddy':
+            message = `IT'S ME. Golden Freddy has appeared!`;
+            io.to(roomCode).emit('trollEvent', {
+                type: 'jumpscare',
+                from: 'SYSTEM',
+                target: 'ALL',
+                imageUrl: 'https://i.imgur.com/7966mP4.png',
+                soundUrl: 'https://raw.githubusercontent.com/Aris-The-Surge/fnaf-sounds/master/FNaF1/GoldenFreddyScream.mp3'
+            });
+            playersArray.forEach(p => p.score = Math.floor(p.score * 0.5));
             break;
     }
     io.to(roomCode).emit('randomEvent', { message });

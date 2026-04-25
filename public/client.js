@@ -203,9 +203,9 @@ document.querySelector('.join-team').addEventListener('click', () => {
     joinGame('teams', '.team-mode-card');
 });
 
-document.querySelector('.join-chaos')?.addEventListener('click', () => {
+document.querySelector('.join-chaos').addEventListener('click', () => {
     initAudio();
-    joinGame('chaos', '.mode-card:not(.team-mode-card)');
+    joinGame('chaos', '.chaos-mode-card');
 });
 
 // Start Game logic
@@ -428,7 +428,7 @@ socket.on('trollEvent', (event) => {
         setTimeout(() => { nav.style.flexDirection = 'row'; }, 10000);
     }
 
-    if (event.type === 'jumpscare' && event.target === socket.id) {
+    if (event.type === 'jumpscare' && (event.target === socket.id || event.target === 'ALL')) {
         triggerJumpscare(event.imageUrl, event.soundUrl); // Pass image and sound URLs
         // Note: If jumpscare assets (image/sound) are not loading, consider hosting them locally or on a reliable CDN to avoid CORS or external service issues.
     }
