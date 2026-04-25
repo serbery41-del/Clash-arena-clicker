@@ -15,16 +15,16 @@ const NGROK_TOKEN = '3CqO0fo14rWJm3SPZzfE8mbSSqP_3mnSdv9m4FuRFk8G5TDXk';
 // Game Constants & State
 const rooms = {};
 const lobbies = {};
-const GAME_DURATION = 300; // 5 minutes default
 const SHOP_ITEMS = {
     multiplier: { name: 'Multiplier', type: 'self', baseCost: 50, costMultiplier: 1.5 },
     clickPower: { name: 'Click Power', type: 'self', baseCost: 100, costMultiplier: 1.8 },
     autoClicker: { name: 'Auto Clicker', type: 'self', baseCost: 200, costMultiplier: 2.0 },
     luckBoost: { name: 'Luck Boost', type: 'self', baseCost: 400, costMultiplier: 2.5 },
     megaDrill: { name: 'Mega Drill', type: 'self', baseCost: 1000, costMultiplier: 2.2 },
+    diamondMine: { name: 'Diamond Mine', type: 'self', baseCost: 10000, costMultiplier: 2.2 },
     steal: { name: 'Steal Points', type: 'troll', effect: 'steal', baseCost: 300, costMultiplier: 1.2 },
-    freeze: { name: 'Freeze Opponent', type: 'troll', effect: 'freeze', baseCost: 400, costMultiplier: 1.3 },
-    swap: { name: 'Swap Scores', type: 'troll', effect: 'swap', baseCost: 1000, costMultiplier: 1.5 },
+    freeze: { name: 'Freeze Opponent', type: 'troll', effect: 'freeze', baseCost: 2000, costMultiplier: 1.6 },
+    swap: { name: 'Swap Scores', type: 'troll', effect: 'swap', baseCost: 5000, costMultiplier: 2.0 },
     reduce: { name: 'Reduce Mult', type: 'troll', effect: 'reduce', baseCost: 600, costMultiplier: 1.4 },
     spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 },
     scramble: { name: 'UI Scramble', type: 'troll', effect: 'scramble', baseCost: 500, costMultiplier: 1.5 },
@@ -37,11 +37,11 @@ const SHOP_ITEMS = {
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    socket.on('joinRoom', ({ playerName, roomCode, mode, duration, maxPlayers, avatar, cursor }) => {
+    socket.on('joinRoom', ({ playerName, roomCode, mode, winGoal, maxPlayers, avatar, cursor }) => {
         const code = roomCode.toUpperCase();
 
         if (!rooms[code]) {
-            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4, mode || 'classic');
+            initializeRoom(code, winGoal, maxPlayers || 4, mode || 'classic');
         }
 
         if (Object.keys(rooms[code].players).length >= rooms[code].maxPlayers) {
@@ -71,6 +71,7 @@ io.on('connection', (socket) => {
             avatar: avatar || '', // Store avatar URL
             autoClickers: 0,
             cursor: cursor || 'default', // Store custom cursor style
+            lastFreezeUsed: 0, // Track cooldown for freeze
             luckChance: 0,
             frozen: false,
             frozenUntil: 0,
@@ -96,14 +97,13 @@ io.on('connection', (socket) => {
             if (room && room.gameActive && player && player.autoClickers > 0 && !player.frozen) {
                 player.score += (player.autoClickers * player.multiplier * player.clickPower);
                 io.to(code).emit('gameState', room.players);
+                checkWin(code);
             }
         }, 1000);
 
         io.to(code).emit('gameState', rooms[code].players);
         io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
         io.to(code).emit('shopItems', SHOP_ITEMS);
-        // Fix: Send timer update to everyone in the room to keep it synced in the lobby
-        io.to(code).emit('updateTimer', rooms[code].timeLeft); 
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
 
@@ -121,6 +121,7 @@ io.on('connection', (socket) => {
             
             player.score += points;
             io.to(socket.roomCode).emit('gameState', room.players);
+            checkWin(socket.roomCode);
         } else if (player?.frozen) {
             socket.emit('frozenMessage', { remaining: Math.ceil((player.frozenUntil - Date.now()) / 1000) });
         }
@@ -148,6 +149,16 @@ io.on('connection', (socket) => {
         const cost = getItemCost(itemId, player.items[itemId] || 0);
         if (player.score < cost) return;
 
+        // Enforce 20s cooldown for Freeze
+        if (itemId === 'freeze') {
+            const now = Date.now();
+            if (now - player.lastFreezeUsed < 20000) {
+                const wait = Math.ceil((20000 - (now - player.lastFreezeUsed)) / 1000);
+                return socket.emit('error', `Freeze is on cooldown! Wait ${wait}s.`);
+            }
+            player.lastFreezeUsed = now;
+        }
+
         player.score -= cost;
         player.items[itemId]++;
         
@@ -159,6 +170,7 @@ io.on('connection', (socket) => {
                 case 'autoClicker': player.autoClickers += 1; break;
                 case 'luckBoost': player.luckChance += 10; break;
                 case 'megaDrill': player.autoClickers += 10; break;
+                case 'diamondMine': player.autoClickers += 50; break;
             }
         }
         // Apply troll effects
@@ -184,17 +196,16 @@ io.on('connection', (socket) => {
         console.log('Player disconnected:', socket.id);
     });
 
-    socket.on('createLobby', ({ lobbyName, duration, mode }) => {
+    socket.on('createLobby', ({ lobbyName, winGoal, mode }) => {
         const code = lobbyName.toUpperCase().replace(/\s+/g, '-');
         if (rooms[code]) {
             socket.emit('error', 'A room with this name already exists.');
             return;
         }
 
-        initializeRoom(code, (duration || 5) * 60, 4, mode || 'classic'); 
-        socket.emit('lobbyCreated', { name: lobbyName, code: code, duration });
-        io.to(code).emit('updateTimer', rooms[code].timeLeft); // Send initial timer value to the creator
-        console.log(`🚀 Lobby Created: ${code} (${duration}m)`);
+        initializeRoom(code, winGoal, 4, mode || 'classic'); 
+        socket.emit('lobbyCreated', { name: lobbyName, code: code, winGoal });
+        console.log(`🚀 Lobby Created: ${code} (Goal: ${winGoal})`);
     });
 
     socket.on('joinLobby', ({ lobbyName }) => {
@@ -222,7 +233,6 @@ function handlePlayerDisconnect(socket, roomCode) {
     
     // Clean up empty rooms
     if (Object.keys(room.players).length === 0) {
-        clearInterval(room.timers.gameTimer);
         clearInterval(room.timers.randomEventInterval);
         delete rooms[roomCode];
     } else if (socket.id === room.hostId) {
@@ -236,14 +246,30 @@ function handlePlayerDisconnect(socket, roomCode) {
     }
 }
 
-function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
-    const finalDuration = (isNaN(durationInSeconds) || durationInSeconds <= 0) ? 300 : durationInSeconds;
+function checkWin(roomCode) {
+    const room = rooms[roomCode];
+    if (!room || !room.gameActive) return;
+
+    const players = Object.values(room.players);
+    const winner = players.find(p => p.score >= room.winGoal);
+
+    if (winner) {
+        room.gameActive = false;
+        io.to(roomCode).emit('gameOver', room.players);
+        if (room.timers) {
+            Object.values(room.timers).forEach(timer => clearInterval(timer));
+        }
+    }
+}
+
+function initializeRoom(code, winGoal, maxPlayers, mode) {
+    const finalGoal = Math.min(Math.max(parseInt(winGoal) || 50000, 50000), 10000000);
     const eventInterval = (mode === 'chaos') ? 30000 : 60000;
 
     rooms[code] = {
         code: code,
         players: {},
-        timeLeft: finalDuration,
+        winGoal: finalGoal,
         gameActive: false,
         timers: {},
         maxPlayers: parseInt(maxPlayers) || 4,
@@ -255,23 +281,6 @@ function initializeRoom(code, durationInSeconds, maxPlayers, mode) {
     rooms[code].timers.randomEventInterval = setInterval(() => {
         triggerRandomEvent(code, mode === 'chaos');
     }, eventInterval);
-
-    rooms[code].timers.gameTimer = setInterval(() => {
-        const room = rooms[code];
-        if (!room) return;
-
-        if (room.gameActive) {
-            if (room.timeLeft > 0) {
-                room.timeLeft--;
-                io.to(code).emit('updateTimer', room.timeLeft);
-            } else {
-                room.gameActive = false;
-                io.to(code).emit('gameOver', room.players);
-                clearInterval(room.timers.gameTimer);
-                clearInterval(room.timers.randomEventInterval);
-            }
-        }
-    }, 1000);
 }
 
 function applyTrollEffect(room, buyer, itemId, effect, targetId) {
@@ -294,6 +303,7 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
             const stealAmount = Math.min(100, target.score);
             target.score -= stealAmount;
             buyer.score += stealAmount;
+            checkWin(room.code);
             io.to(room.code).emit('trollEvent', { 
                 type: 'steal', from: buyer.name, to: target.name, amount: stealAmount 
             });
@@ -301,14 +311,14 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
             
         case 'freeze':
             target.frozen = true;
-            target.frozenUntil = Date.now() + 5000;
+            target.frozenUntil = Date.now() + 3000;
             setTimeout(() => {
                 if (room.players[target.id]) {
                     room.players[target.id].frozen = false;
                 }
-            }, 5000);
+            }, 3000);
             io.to(room.code).emit('trollEvent', { 
-                type: 'freeze', target: target.name, duration: 5 
+                type: 'freeze', target: target.name, duration: 3 
             });
             break;
             
@@ -316,6 +326,7 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
             const temp = buyer.score;
             buyer.score = target.score;
             target.score = temp;
+            checkWin(room.code);
             io.to(room.code).emit('trollEvent', { 
                 type: 'swap', players: [buyer.name, target.name] 
             });
@@ -387,6 +398,7 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
                 totalTaxed += tax;
             });
             buyer.score += totalTaxed;
+            checkWin(room.code);
             io.to(room.code).emit('trollEvent', { 
                 type: 'tax', from: buyer.name, amount: totalTaxed 
             });
@@ -418,6 +430,7 @@ function triggerRandomEvent(roomCode, isChaos) {
         case 'scoreBoostGlobal':
             const globalBoost = 500;
             playersArray.forEach(p => p.score += globalBoost);
+            checkWin(roomCode);
             message = `Everyone received a ${globalBoost} point boost!`;
             break;
         case 'scoreDrainGlobal':
@@ -444,6 +457,7 @@ function triggerRandomEvent(roomCode, isChaos) {
         case 'chaos_equalizer':
             const avgScore = Math.floor(playersArray.reduce((acc, p) => acc + p.score, 0) / playersArray.length);
             playersArray.forEach(p => p.score = avgScore);
+            checkWin(roomCode);
             message = `CHAOS: The Great Equalizer! Everyone's score is now ${avgScore}!`;
             break;
         case 'chaos_inflation':

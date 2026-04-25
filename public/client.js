@@ -259,9 +259,9 @@ function joinGame(mode, cardSelector) {
     
     const playerName = card.querySelector('.name-input').value.trim();
     const roomCode = card.querySelector('.code-input').value.trim().toUpperCase();
-    const durationInput = card.querySelector('.time-input').value;
+    const goalInput = card.querySelector('.time-input').value;
     const maxPlayers = card.querySelector('.players-input')?.value || 4;
-    const duration = parseInt(durationInput) || 5;
+    const winGoal = parseInt(goalInput) || 50000;
 
     if (playerName && roomCode) {
         currentMode = mode;
@@ -269,7 +269,7 @@ function joinGame(mode, cardSelector) {
             playerName, 
             roomCode,
             mode,
-            duration: duration,
+            winGoal: winGoal,
             maxPlayers: parseInt(maxPlayers)
         });
         document.getElementById('current-room').innerText = roomCode;
@@ -567,23 +567,6 @@ socket.on('luckyHit', ({ playerId, points }) => {
 // 8. Frozen Message
 socket.on('frozenMessage', ({ remaining }) => {
     showNotification(`❄️ You are frozen! ${remaining}s left`);
-});
-
-// 9. Update Timer
-socket.on('updateTimer', (timeLeft) => {
-    try {
-        const timerElement = document.getElementById('timer');
-        if (!timerElement) return;
-
-        const minutes = Math.floor(timeLeft / 60);
-        const seconds = timeLeft % 60;
-        
-        timerElement.innerText = 
-            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
-    } catch (error) {
-        console.error("Timer update failed but script is still running:", error);
-    }
 });
 
 // 11. Random Event
