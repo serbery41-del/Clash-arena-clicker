@@ -93,39 +93,6 @@ function triggerJumpscare(imageUrl, soundUrl) {
     const img = document.getElementById('jumpscare-img');
     if (!overlay || !img) return;
 
-    // Foxy's Scream
-    const jumpscareAudio = new Audio(soundUrl);
-    jumpscareAudio.volume = 1.0; 
-
-    img.src = imageUrl;
-    overlay.style.display = 'flex';
-    
-    // Force reflow for the CSS "pop" effect
-    void overlay.offsetWidth;
-    overlay.style.opacity = '1';
-    overlay.style.transform = 'scale(1.2)'; // Slight zoom-in for Foxy's lunging effect
-
-    jumpscareAudio.play().catch(e => console.error("Foxy's scream failed to load:", e));
-
-    if ("vibrate" in navigator) {
-        navigator.vibrate([500]); // One long pulse for the shock
-    }
-
-    setTimeout(() => {
-        overlay.style.opacity = '0';
-        overlay.style.transform = 'scale(1)'; 
-        setTimeout(() => {
-            overlay.style.display = 'none';
-            img.src = '';
-        }, 400);
-    }, 800); // Shorter duration for Foxy's speed
-}
-
-function triggerJumpscare(imageUrl, soundUrl) {
-    const overlay = document.getElementById('jumpscare-overlay');
-    const img = document.getElementById('jumpscare-img');
-    if (!overlay || !img) return;
-
     // Load Foxy's scream
     const jumpscareAudio = new Audio(soundUrl);
     jumpscareAudio.volume = 1.0; 
@@ -180,6 +147,20 @@ socket.on('connect', () => {
     console.log('Connected to server with ID:', socket.id);
 });
 
+// Initialize goal input fields on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const goalInputs = document.querySelectorAll('.goal-input, .time-input');
+    goalInputs.forEach(input => {
+        input.setAttribute('min', '50000');
+        input.setAttribute('max', '10000000');
+        input.setAttribute('placeholder', '50,000 - 10,000,000');
+        // Set a default value if it's empty or still showing old timer defaults
+        if (!input.value || parseInt(input.value) < 50000 || parseInt(input.value) > 10000000) {
+            input.value = '50000'; // Default to minimum
+        }
+    });
+});
+
 socket.on('error', (msg) => {
     alert(`Server Error: ${msg}`);
 });
@@ -207,10 +188,11 @@ function joinGame(mode, cardSelector) {
     const playerName = card.querySelector('.name-input').value.trim();
     const roomCode = card.querySelector('.code-input').value.trim().toUpperCase();
     // Renamed selector to look for .time-input or .goal-input for backward compatibility
-    const goalInput = (card.querySelector('.goal-input') || card.querySelector('.time-input')).value;
+    const goalInputValue = (card.querySelector('.goal-input') || card.querySelector('.time-input')).value;
     const maxPlayers = card.querySelector('.players-input')?.value || 4;
     
-    const winGoal = parseInt(goalInput) || 50000;
+    // Ensure client-side clamping matches server-side expectations
+    const winGoal = Math.min(Math.max(parseInt(goalInputValue) || 50000, 50000), 10000000);
 
     if (playerName && roomCode) {
         currentMode = mode;

@@ -228,11 +228,6 @@ function handlePlayerDisconnect(socket, roomCode) {
 
     delete room.players[socket.id];
     
-    if (room.timers[socket.id]) {
-        clearInterval(room.timers[socket.id]);
-        delete room.timers[socket.id]; // Remove the specific player's timer
-    }
-    
     io.to(roomCode).emit('gameState', room.players);
     
     // Clean up empty rooms
