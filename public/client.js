@@ -1,4 +1,6 @@
 const socket = io();
+let isHost = false;
+
 socket.on('connect', () => {
     console.log('Connected to server with ID:', socket.id);
 });
@@ -12,6 +14,7 @@ const lobbyScreen = document.getElementById('lobby-screen');
 const gameScreen = document.getElementById('game-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
 
+const startBtn = document.getElementById('startBtn');
 const joinBtn = document.getElementById('joinBtn');
 const clickTarget = document.getElementById('click-target');
 const shopContainer = document.getElementById('shop-items');
@@ -22,23 +25,50 @@ let shopItems = {};
 let playerItems = {};
 
 // 1. Join Room
-joinBtn.addEventListener('click', () => {
+joinBtn.addEventListener('pointerdown', () => {
     const playerName = document.getElementById('playerName').value.trim();
     const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+    const gameMinutes = document.getElementById('game-minutes').value;
+    const maxPlayers = document.getElementById('max-players').value;
 
     if (playerName && roomCode) {
-        socket.emit('joinRoom', { playerName, roomCode });
+        socket.emit('joinRoom', { 
+            playerName, 
+            roomCode,
+            settings: { duration: gameMinutes * 60, maxPlayers: parseInt(maxPlayers) }
+        });
         
         document.getElementById('current-room').innerText = roomCode;
-        lobbyScreen.style.display = 'none';
-        gameScreen.style.display = 'block';
     } else {
         alert("Please enter a name and a room code!");
     }
 });
 
+// Start Game logic
+startBtn.addEventListener('pointerdown', () => {
+    socket.emit('startGame');
+});
+
+socket.on('roomUpdate', ({ players, hostId }) => {
+    isHost = socket.id === hostId;
+    const playerCount = Object.keys(players).length;
+    
+    if (isHost) {
+        startBtn.style.display = 'block';
+        startBtn.disabled = playerCount < 2;
+        startBtn.innerText = playerCount < 2 ? "Waiting for players..." : "Start Game";
+    }
+    document.getElementById('lobby-status').innerText = `${playerCount} players in lobby`;
+});
+
+socket.on('gameStarted', () => {
+    lobbyScreen.style.display = 'none';
+    gameScreen.style.display = 'flex';
+});
+
 // 2. Click the Gem
-clickTarget.addEventListener('mousedown', () => {
+clickTarget.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); // Prevent accidental zoom/scrolling
     socket.emit('click');
     // Visual Polish: Squash effect
     clickTarget.style.transform = 'scale(0.95)';
@@ -59,8 +89,23 @@ function handleShopClick(e) {
     socket.emit('buyUpgrade', { itemId });
 }
 
-shopContainer.addEventListener('click', handleShopClick);
-trollContainer.addEventListener('click', handleShopClick);
+shopContainer.addEventListener('pointerdown', handleShopClick);
+trollContainer.addEventListener('pointerdown', handleShopClick);
+
+// Emoji Navigation / Tabs
+document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('pointerdown', () => {
+        const targetTab = btn.dataset.tab;
+        
+        // Switch Tabs
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.getElementById(targetTab).classList.add('active');
+        
+        // Update Nav Buttons
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    });
+});
 
 function calculateCost(item, owned) {
     return Math.floor(item.baseCost * Math.pow(item.costMultiplier, owned));
@@ -69,20 +114,45 @@ function calculateCost(item, owned) {
 // 4. Receive Shop Items
 socket.on('shopItems', (items) => {
     shopItems = items;
+    renderShop();
     updateShopUI();
 });
+
+function renderShop() {
+    shopContainer.innerHTML = '';
+    trollContainer.innerHTML = '';
+
+    Object.keys(shopItems).forEach(id => {
+        const item = shopItems[id];
+        const btn = document.createElement('div');
+        btn.className = 'shop-btn';
+        btn.dataset.item = id;
+        btn.innerHTML = `
+            <div class="info">
+                <span class="name">${item.name}</span>
+                <span class="cost">Cost: ${item.baseCost}</span>
+            </div>
+            <div class="owned-count">0</div>
+        `;
+
+        if (item.type === 'troll') trollContainer.appendChild(btn);
+        else shopContainer.appendChild(btn);
+    });
+}
 
 function updateShopUI() {
     const allButtons = document.querySelectorAll('.shop-btn');
     allButtons.forEach(btn => {
         const itemId = btn.dataset.item;
         const item = shopItems[itemId];
-        if (!item || !playerItems) return;
+        if (!item) return;
         
         const owned = playerItems[itemId] || 0;
         const cost = calculateCost(item, owned);
         
         btn.querySelector('.cost').innerText = `Cost: ${cost}`;
+        const ownedLabel = btn.querySelector('.owned-count');
+        if (ownedLabel) ownedLabel.innerText = owned;
     });
 }
 
@@ -132,8 +202,17 @@ socket.on('trollEvent', (event) => {
         freeze: `❄️ ${event.target} is frozen for ${event.duration} sec!`,
         swap: `🔄 Scores swapped between ${event.players[0]} and ${event.players[1]}!`,
         reduce: `📉 ${event.target}'s multiplier decreased!`,
-        spam: `😂 ${event.target} is being spammed with ${event.emoji}!`
+        spam: `😂 ${event.target} is being spammed with ${event.emoji}!`,
+        tax: `💰 ${event.from} collected $${event.amount} in taxes!`,
+        scramble: `🌀 ${event.targetName}'s controls were scrambled!`
     };
+
+    // If I am the target of a scramble
+    if (event.type === 'scramble' && event.target === socket.id) {
+        const nav = document.getElementById('emoji-nav');
+        nav.style.flexDirection = nav.style.flexDirection === 'row-reverse' ? 'row' : 'row-reverse';
+        setTimeout(() => { nav.style.flexDirection = 'row'; }, 10000);
+    }
     
     if (messages[event.type]) showNotification(messages[event.type]);
 });

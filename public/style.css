@@ -1,262 +1,83 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Fredoka One', cursive;
-    user-select: none;
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { 
+    margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; 
+    background: #1a1a2e; color: white; overflow: hidden;
+    height: 100vh; width: 100vw;
 }
-
-body {
-    background: radial-gradient(circle at center, #1a5fff 0%, #002266 100%);
-    color: white;
-    height: 100vh;
-    overflow: hidden;
-    font-family: Arial, sans-serif;
-}
-
-/* --- LOBBY --- */
-#lobby-screen, #game-over-screen {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-.lobby-box {
-    background: rgba(0, 0, 0, 0.5);
-    padding: 40px;
-    border-radius: 20px;
-    text-align: center;
-    border: 4px solid #00f3ff;
-    box-shadow: 0 0 20px #00f3ff;
-}
-
-.lobby-box h1 {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-    color: #ff00ea;
-    text-shadow: 2px 2px 0px #fff;
-}
-
-input {
-    display: block;
-    width: 100%;
-    margin: 10px 0;
-    padding: 15px;
-    border-radius: 10px;
-    border: none;
-    font-size: 1.2rem;
-    text-align: center;
-}
-
-button {
-    background: #ffcc00;
-    border: none;
-    padding: 15px 30px;
-    font-size: 1.5rem;
-    border-radius: 10px;
-    cursor: pointer;
-    margin-top: 15px;
-    box-shadow: 0 6px 0 #cc9900;
-    transition: all 0.1s;
-}
-
-button:active {
-    transform: translateY(6px);
-    box-shadow: 0 0 0 #cc9900;
-}
-
-/* --- GAME SCREEN --- */
-.header {
-    display: flex;
-    justify-content: space-between;
-    padding: 20px 40px;
-    font-size: 2rem;
-    background: rgba(0, 0, 0, 0.3);
-    border-bottom: 2px solid #00f3ff;
-}
-
-#timer { color: #ff00ea; }
-
-.game-container {
-    display: flex;
-    justify-content: space-between;
-    height: calc(100vh - 80px);
-    padding: 20px;
-}
-
-.side-panel {
-    width: 25%;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-}
-
-.side-panel h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #00f3ff;
-}
-
-ul { list-style: none; }
-li {
-    font-size: 1.2rem;
-    padding: 10px;
-    background: rgba(0,0,0,0.4);
-    margin-bottom: 10px;
-    border-radius: 10px;
-    display: flex;
-    justify-content: space-between;
-}
-
-/* --- CENTER CLICK TARGET --- */
-.center-panel {
-    width: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-.gem {
-    width: 200px;
-    height: 250px;
-    background: linear-gradient(135deg, #00f3ff 0%, #ff00ea 100%);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    cursor: pointer;
-    transition: transform 0.05s ease-in-out;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 0 50px rgba(0, 243, 255, 0.8);
-}
-
-.gem-inner {
-    width: 160px;
-    height: 200px;
-    background: linear-gradient(135deg, #ffffff 0%, #00f3ff 100%);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    opacity: 0.5;
-}
-
-.gem:active { transform: scale(0.9); }
-
-#my-score {
-    margin-top: 30px;
-    font-size: 3rem;
-    color: #ffcc00;
-    text-shadow: 3px 3px 0 #000;
-}
-
-/* --- SHOP --- */
-.shop-btn { 
-    width: 100%; 
-    font-size: 0.9rem; 
-    margin-bottom: 8px; 
-    padding: 10px;
-}
-
-.troll-header {
-    margin-top: 20px;
-    color: #ff6b6b !important;
-}
-
-#troll-items {
-    margin-top: 10px;
-}
-
-.troll-item {
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
-    border: 2px solid #ff4444;
-}
-
-.my-stats {
-    margin-top: 20px;
-    padding: 15px;
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 10px;
-}
-
-.my-stats p {
-    font-size: 0.9rem;
-    margin: 6px 0;
-    color: #ffcc00;
-}
-
-/* --- TROLL NOTIFICATIONS --- */
-.troll-notification {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(255, 0, 100, 0.9);
-    color: white;
-    padding: 15px 30px;
-    border-radius: 10px;
-    font-size: 1.2rem;
-    z-index: 1000;
-    animation: slideDown 0.3s ease, fadeOut 0.3s ease 2.7s;
-    box-shadow: 0 0 20px rgba(255, 0, 100, 0.8);
-}
-
-@keyframes slideDown {
-    from { transform: translateX(-50%) translateY(-50px); opacity: 0; }
-    to { transform: translateX(-50%) translateY(0); opacity: 1; }
-}
-
-@keyframes fadeOut {
-    to { opacity: 0; }
-}
-
-/* --- MOBILE OPTIMIZATION --- */
 .container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
+    display: flex; flex-direction: column; align-items: center;
+    height: 100%; width: 100%; padding: 15px;
+}
+h1 { margin: 10px 0; font-size: 1.8rem; text-shadow: 0 0 10px #00d2ff; }
+
+/* Lobby */
+.input-group { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
+input, select { 
+    padding: 12px; border-radius: 8px; border: none; font-size: 1rem; 
+    background: #16213e; color: white; min-height: 48px;
+}
+.settings-panel { 
+    background: #0f3460; padding: 15px; border-radius: 12px; 
+    width: 100%; max-width: 300px; margin: 15px 0; 
+}
+.settings-panel label { display: block; margin: 10px 0; font-size: 0.9rem; }
+
+/* Buttons */
+.primary-btn {
+    background: linear-gradient(45deg, #e94560, #ff2e63);
+    color: white; border: none; padding: 15px 30px; border-radius: 12px;
+    font-weight: bold; cursor: pointer; min-height: 50px; width: 100%; max-width: 300px; margin-top: 10px;
 }
 
-button {
-    padding: 10px;
-    font-size: 16px;
-    margin: 5px;
-    border-radius: 5px;
-    border: none;
-    cursor: pointer;
+/* Game UI */
+header { display: flex; justify-content: space-between; width: 100%; font-weight: bold; padding-bottom: 10px; }
+#timer { color: #e94560; font-size: 1.2rem; }
+
+.tab-content { display: none; flex-direction: column; width: 100%; flex: 1; overflow-y: auto; padding-bottom: 70px; }
+.tab-content.active { display: flex; }
+
+#click-target-container { flex: 1; display: flex; justify-content: center; align-items: center; }
+#click-target { 
+    width: 70vw; max-width: 300px; height: auto; 
+    transition: transform 0.05s; cursor: pointer; filter: drop-shadow(0 0 20px rgba(0, 210, 255, 0.5));
 }
 
-/* Ensure shop and game elements are touch-friendly */
-.shop {
-    overflow-y: auto;
-    max-height: 70vh;
-    width: 100%;
+.stats-bar { text-align: center; font-size: 1.5rem; margin-bottom: 10px; }
+.sub-stats { display: flex; justify-content: space-around; font-size: 0.8rem; color: #aaa; }
+
+/* Shop & Trolls */
+.scroll-list { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.shop-btn {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #16213e; padding: 12px; border-radius: 10px; border: 1px solid #0f3460;
+    color: white; cursor: pointer; min-height: 55px;
+}
+.shop-btn .info { display: flex; flex-direction: column; align-items: flex-start; }
+.shop-btn .name { font-weight: bold; font-size: 0.9rem; }
+.shop-btn .cost { font-size: 0.8rem; color: #00d2ff; }
+
+/* Emoji Navigation */
+#emoji-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 65px; background: #0f3460;
+    display: flex; justify-content: space-around; align-items: center;
+    border-top: 2px solid #e94560; z-index: 100;
+}
+.nav-btn { 
+    background: none; border: none; font-size: 1.8rem; cursor: pointer; 
+    padding: 10px; transition: transform 0.2s; 
+}
+.nav-btn.active { transform: translateY(-5px) scale(1.2); }
+
+/* Notifications */
+.troll-notification {
+    position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
+    background: rgba(233, 69, 96, 0.9); padding: 10px 20px; border-radius: 20px;
+    font-weight: bold; z-index: 1000; pointer-events: none; transition: opacity 0.5s;
 }
 
-.shop-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #ccc;
-}
-
-.shop-item button {
-    background-color: #4CAF50;
-    color: white;
-}
-
-/* Adjustments for smaller screens */
-@media (max-width: 600px) {
-    .container {
-        padding: 5px;
-    }
-
-    button {
-        font-size: 14px;
-        padding: 8px;
-    }
+#leaderboard { list-style: none; padding: 0; width: 100%; }
+#leaderboard li {
+    display: flex; justify-content: space-between; padding: 12px;
+    border-bottom: 1px solid #16213e; font-size: 1rem;
 }
