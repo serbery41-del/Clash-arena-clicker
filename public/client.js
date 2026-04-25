@@ -29,11 +29,15 @@ let playerItems = {};
 joinBtn.addEventListener('pointerdown', () => {
     const playerName = document.getElementById('playerName').value.trim();
     const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+    const duration = document.getElementById('game-minutes').value;
+    const maxPlayers = document.getElementById('max-players').value;
 
     if (playerName && roomCode) {
         socket.emit('joinRoom', { 
             playerName, 
-            roomCode
+            roomCode,
+            duration: parseInt(duration),
+            maxPlayers: parseInt(maxPlayers)
         });
         
         document.getElementById('current-room').innerText = roomCode;
