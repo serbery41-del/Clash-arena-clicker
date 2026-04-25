@@ -35,16 +35,19 @@ const SHOP_ITEMS = {
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    console.log('Player connected:', socket.id);
-
-    socket.on('joinRoom', ({ playerName, roomCode }) => {
+    socket.on('joinRoom', ({ playerName, roomCode, duration, maxPlayers }) => {
         const code = roomCode.toUpperCase();
-        socket.join(code);
-        socket.roomCode = code;
         
         if (!rooms[code]) {
-            initializeRoom(code, GAME_DURATION);
+            initializeRoom(code, (duration || 5) * 60, maxPlayers || 4);
         }
+
+        if (Object.keys(rooms[code].players).length >= rooms[code].maxPlayers) {
+            return socket.emit('error', 'Room is full!');
+        }
+
+        socket.join(code);
+        socket.roomCode = code;
         
         if (Object.keys(rooms[code].players).length === 0) {
             rooms[code].hostId = socket.id;
@@ -201,13 +204,14 @@ io.on('connection', (socket) => {
     });
 });
 
-function initializeRoom(code, durationInSeconds) {
+function initializeRoom(code, durationInSeconds, maxPlayers) {
     rooms[code] = {
         code: code,
         players: {},
         timeLeft: durationInSeconds,
         gameActive: false,
         timers: {},
+        maxPlayers: parseInt(maxPlayers) || 4,
         hostId: null
     };
     
@@ -294,6 +298,19 @@ function applyTrollEffect(room, buyer, itemId, effect) {
                 });
                 spamCount++;
             }, 500);
+            break;
+            
+        case 'tax':
+            let totalTaxed = 0;
+            opponents.forEach(p => {
+                const tax = Math.floor(p.score * 0.15); // 15% tax
+                p.score -= tax;
+                totalTaxed += tax;
+            });
+            buyer.score += totalTaxed;
+            io.to(room.code).emit('trollEvent', { 
+                type: 'tax', from: buyer.name, amount: totalTaxed 
+            });
             break;
     }
 }
