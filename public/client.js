@@ -291,6 +291,12 @@ socket.on('roomUpdate', ({ players, hostId, gameActive, winGoal }) => {
 socket.on('gameStarted', () => {
     lobbyScreen.style.display = 'none';
     gameScreen.style.display = 'flex';
+    // Reset the header to show the Target Score immediately
+    const headerDisplay = document.getElementById('timer');
+    const winGoal = document.querySelector('.goal-input')?.value || 50000;
+    if (headerDisplay) {
+        headerDisplay.innerText = `Target: ${parseInt(winGoal).toLocaleString()}`;
+    }
 });
 
 // Leave Room logic
@@ -428,9 +434,16 @@ socket.on('gameState', (players) => {
             document.getElementById('my-clickPower').innerText = `Click Power: x${p.clickPower}`;
             document.getElementById('my-autoClickers').innerText = `Auto Clickers: ${p.autoClickers}`;
             document.getElementById('my-luckChance').innerText = `Luck: ${p.luckChance}%`;
+            if (document.getElementById('my-shields')) document.getElementById('my-shields').innerText = `Shields: ${p.shields || 0}`;
             
             playerItems = p.items;
             updateShopUI();
+
+            // Keep the Target Score updated in the UI header
+            const headerDisplay = document.getElementById('timer');
+            if (headerDisplay && !headerDisplay.innerText.includes('Target')) {
+                headerDisplay.innerText = `Target: ${p.winGoal ? p.winGoal.toLocaleString() : 'Loading...'}`;
+            }
 
             const allButtons = document.querySelectorAll('.shop-btn');
             allButtons.forEach(btn => {
@@ -463,7 +476,8 @@ socket.on('trollEvent', (event) => {
         tax: `💰 ${event.from} collected ${event.amount} in taxes!`,
         loudSoundTroll: `🔊 ${event.from} trolled ${event.targetName} with a loud sound!`,
         scramble: `🌀 ${event.targetName}'s controls were scrambled!`,
-        jumpscare: `👻 ${event.from} triggered a jumpscare!`
+        jumpscare: `👻 ${event.from} triggered a jumpscare!`,
+        shieldBlock: `🛡️ ${event.target}'s shield blocked an attack from ${event.attacker}!`
     };
 
     if ((event.type === 'spam' || event.type === 'chaos_spam') && event.isTarget) {

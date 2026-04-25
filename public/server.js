@@ -29,6 +29,7 @@ const SHOP_ITEMS = {
     spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 },
     scramble: { name: 'UI Scramble', type: 'troll', effect: 'scramble', baseCost: 500, costMultiplier: 1.5 },
     tax: { name: 'Tax Everyone', type: 'troll', effect: 'tax', baseCost: 800, costMultiplier: 1.6 },
+    shield: { name: 'Shield', type: 'self', effect: 'shield', baseCost: 1500, costMultiplier: 2.0 },
     loudSoundTroll: { name: 'Loud Sound Troll', type: 'troll', effect: 'loudSoundTroll', baseCost: 3000, costMultiplier: 1.0 },
     jumpscare: { name: 'Foxy Jumpscare', type: 'troll', effect: 'jumpscare', baseCost: 1200, costMultiplier: 1.5 }
 };
@@ -71,6 +72,7 @@ io.on('connection', (socket) => {
             avatar: avatar || '', // Store avatar URL
             autoClickers: 0,
             cursor: cursor || 'default', // Store custom cursor style
+            shields: 0, // Track active shields
             lastFreezeUsed: 0, // Track cooldown for freeze
             luckChance: 0,
             frozen: false,
@@ -94,6 +96,13 @@ io.on('connection', (socket) => {
         rooms[code].timers[socket.id] = setInterval(() => {
             const room = rooms[code];
             const player = room?.players[socket.id];
+            
+            // Crash protection: If player is gone, kill this timer immediately
+            if (!player) {
+                if (room?.timers) clearInterval(room.timers[socket.id]);
+                return;
+            }
+
             if (room && room.gameActive && player && player.id && player.autoClickers > 0 && !player.frozen) {
                 player.score += (player.autoClickers * player.multiplier * player.clickPower);
                 io.to(code).emit('gameState', room.players);
@@ -175,6 +184,7 @@ io.on('connection', (socket) => {
                 case 'luckBoost': player.luckChance += 10; break;
                 case 'megaDrill': player.autoClickers += 10; break;
                 case 'diamondMine': player.autoClickers += 50; break;
+                case 'shield': player.shields += 1; break;
             }
         }
         // Apply troll effects
@@ -303,6 +313,17 @@ function applyTrollEffect(room, buyer, itemId, effect, targetId) {
         target = opponents[Math.floor(Math.random() * opponents.length)];
     }
     
+    // Shield Logic: If target has a shield, consume it and block the troll
+    if (target.shields > 0) {
+        target.shields--;
+        io.to(room.code).emit('trollEvent', { 
+            type: 'shieldBlock', 
+            target: target.name, 
+            attacker: buyer.name 
+        });
+        return;
+    }
+
     switch(effect) {
         case 'steal':
             const stealAmount = Math.min(100, target.score);
