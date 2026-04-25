@@ -45,6 +45,10 @@ io.on('connection', (socket) => {
         if (!rooms[code]) {
             initializeRoom(code, GAME_DURATION);
         }
+        
+        if (Object.keys(rooms[code].players).length === 0) {
+            rooms[code].hostId = socket.id;
+        }
 
         // CLEANUP: If this player already exists in the room (reconnection), 
         // clear their old timer to prevent double-scoring.
@@ -82,6 +86,7 @@ io.on('connection', (socket) => {
         }, 1000);
 
         io.to(code).emit('gameState', rooms[code].players);
+        io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
         io.to(code).emit('shopItems', SHOP_ITEMS);
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
@@ -102,6 +107,14 @@ io.on('connection', (socket) => {
             io.to(socket.roomCode).emit('gameState', room.players);
         } else if (player?.frozen) {
             socket.emit('frozenMessage', { remaining: Math.ceil((player.frozenUntil - Date.now()) / 1000) });
+        }
+    });
+
+    socket.on('startGame', () => {
+        const room = rooms[socket.roomCode];
+        if (room && socket.id === room.hostId && !room.gameActive) {
+            room.gameActive = true;
+            io.to(socket.roomCode).emit('gameStarted');
         }
     });
 
@@ -154,6 +167,13 @@ io.on('connection', (socket) => {
             if (Object.keys(room.players).length === 0) {
                 clearInterval(room.timers.gameTimer);
                 delete rooms[socket.roomCode];
+            } else if (socket.id === room.hostId) {
+                // Reassign host
+                room.hostId = Object.keys(room.players)[0];
+                io.to(socket.roomCode).emit('roomUpdate', { 
+                    players: room.players, 
+                    hostId: room.hostId 
+                });
             }
         }
         console.log('Player disconnected:', socket.id);
@@ -186,14 +206,16 @@ function initializeRoom(code, durationInSeconds) {
         code: code,
         players: {},
         timeLeft: durationInSeconds,
-        gameActive: true,
-        timers: {}
+        gameActive: false,
+        timers: {},
+        hostId: null
     };
     
     rooms[code].timers.gameTimer = setInterval(() => {
-        if (rooms[code] && rooms[code].timeLeft > 0) {
+        const room = rooms[code];
+        if (room && room.gameActive && room.timeLeft > 0) {
             rooms[code].timeLeft--;
-            io.to(code).emit('updateTimer', rooms[code].timeLeft);
+            io.to(code).emit('updateTimer', room.timeLeft);
         } else if (rooms[code]) {
             rooms[code].gameActive = false;
             io.to(code).emit('gameOver', rooms[code].players);
