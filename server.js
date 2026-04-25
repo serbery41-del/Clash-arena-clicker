@@ -20,12 +20,15 @@ const SHOP_ITEMS = {
     multiplier: { name: 'Multiplier', type: 'self', baseCost: 50, costMultiplier: 1.5 },
     clickPower: { name: 'Click Power', type: 'self', baseCost: 100, costMultiplier: 1.8 },
     autoClicker: { name: 'Auto Clicker', type: 'self', baseCost: 200, costMultiplier: 2.0 },
-    luckBoost: { name: 'Luck Boost', type: 'self', baseCost: 500, costMultiplier: 2.5 },
+    luckBoost: { name: 'Luck Boost', type: 'self', baseCost: 400, costMultiplier: 2.5 },
+    megaDrill: { name: 'Mega Drill', type: 'self', baseCost: 1000, costMultiplier: 2.2 },
     steal: { name: 'Steal Points', type: 'troll', effect: 'steal', baseCost: 300, costMultiplier: 1.2 },
     freeze: { name: 'Freeze Opponent', type: 'troll', effect: 'freeze', baseCost: 400, costMultiplier: 1.3 },
     swap: { name: 'Swap Scores', type: 'troll', effect: 'swap', baseCost: 1000, costMultiplier: 1.5 },
     reduce: { name: 'Reduce Mult', type: 'troll', effect: 'reduce', baseCost: 600, costMultiplier: 1.4 },
-    spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 }
+    spam: { name: 'Emoji Spam', type: 'troll', effect: 'spam', baseCost: 150, costMultiplier: 1.1 },
+    scramble: { name: 'UI Scramble', type: 'troll', effect: 'scramble', baseCost: 500, costMultiplier: 1.5 },
+    tax: { name: 'Tax Everyone', type: 'troll', effect: 'tax', baseCost: 800, costMultiplier: 1.6 }
 };
 
 // Serve static files
@@ -125,6 +128,7 @@ io.on('connection', (socket) => {
                 case 'clickPower': player.clickPower += 1; break;
                 case 'autoClicker': player.autoClickers += 1; break;
                 case 'luckBoost': player.luckChance += 10; break;
+                case 'megaDrill': player.autoClickers += 10; break;
             }
         }
         // Apply troll effects
@@ -249,6 +253,12 @@ function applyTrollEffect(room, buyer, itemId, effect) {
             }
             break;
             
+        case 'scramble':
+            io.to(room.code).emit('trollEvent', { 
+                type: 'scramble', target: target.id, targetName: target.name 
+            });
+            break;
+
         case 'spam':
             const emojis = ['😂', '🤡', '💀', '🙃', '😎'];
             let spamCount = 0;
