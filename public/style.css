@@ -299,17 +299,20 @@ h3 { text-align: center; color: var(--accent); margin-top: 0; border-bottom: 1px
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
     body {
-        padding: 0; /* Remove body padding on small screens */
+        padding: 0;
+        overflow-y: auto; /* Allow scrolling for lobby/game over */
     }
 
     .container {
-        padding: 10px; /* Adjust container padding */
+        padding: 10px;
+        height: auto;
+        min-height: 100vh;
     }
 
     #game-screen {
-        flex-direction: column; /* Stack panels vertically */
-        overflow-y: auto; /* Allow scrolling if content overflows vertically */
-        height: 100%; /* Allow content to define height, but scroll if needed */
+        flex-direction: column;
+        overflow-y: auto;
+        height: 100%;
     } 
 
     #left-panel, #right-panel {
@@ -340,6 +343,25 @@ h3 { text-align: center; color: var(--accent); margin-top: 0; border-bottom: 1px
     #game-content header {
         flex-wrap: wrap; /* Allow header items to wrap on small screens */
         justify-content: center;
+    }
+
+    /* Lobby UI Simplification */
+    .mode-cards {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        gap: 15px;
+    }
+
+    .mode-card {
+        width: 95%;
+        max-width: 400px;
+        padding: 15px;
+    }
+
+    .mode-card .input-group input {
+        font-size: 16px; /* Prevents iOS auto-zoom on focus */
+        padding: 15px;
     }
 }
 

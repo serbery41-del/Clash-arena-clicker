@@ -323,169 +323,7 @@ socket.on('gameState', (players) => {
     playersArray.sort((a, b) => b.score - a.score);
 
     playersArray.forEach((p, index) => {
-        const teamTag = p.team ? `<span class="team-tag tag-${p.team}">${p.team.toUpperCase()}</span> ` : '';
-        
-        const li = document.createElement('li');
-        li.className = p.team ? `team-${p.team}` : '';
-        li.innerHTML = `<span>#${index + 1} ${teamTag}${p.name}</span> <span>${p.score}</span>`;
-        leaderboardUI.appendChild(li);
-
-        if (p.id !== socket.id) {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.innerText = p.name + (p.team ? ` (${p.team})` : '');
-            targetSelect.appendChild(opt);
-        }
-
-        if (p.id === socket.id) {
-            document.getElementById('my-score').innerText = `Score: ${p.score}`;
-            document.getElementById('my-multiplier').innerText = `Multiplier: x${p.multiplier}`;
-            document.getElementById('my-clickPower').innerText = `Click Power: x${p.clickPower}`;
-            document.getElementById('my-autoClickers').innerText = `Auto Clickers: ${p.autoClickers}`;
-            document.getElementById('my-luckChance').innerText = `Luck: ${p.luckChance}%`;
-            
-            playerItems = p.items;
-            updateShopUI();
-            
-            const allButtons = document.querySelectorAll('.shop-btn');
-            allButtons.forEach(btn => {
-                const itemId = btn.dataset.item;
-                const item = shopItems[itemId];
-                if (!item) return;
-                const owned = playerItems[itemId] || 0;
-                const cost = calculateCost(item, owned);
-                
-                btn.style.opacity = p.score < cost ? '0.5' : '1';
-            });
-        }
-    });
-
-    if ([...targetSelect.options].some(o => o.value === currentTarget)) targetSelect.value = currentTarget;
-});
-
-// 6. Troll Events
-socket.on('trollEvent', (event) => {
-    if (!event) return;
-    playTrollSound();
-    
-    const messages = {
-        steal: `🔥 ${event.from} stole ${event.amount} pts from ${event.to}!`,
-        freeze: `❄️ ${event.target} is frozen for ${event.duration} sec!`,
-        swap: `🔄 Scores swapped between ${event.players[0]} and ${event.players[1]}!`,
-        reduce: `📉 ${event.target}'s multiplier decreased!`,
-        spam: `😂 ${event.target} is being spammed with ${event.emoji}!`,
-        tax: `💰 ${event.from} collected ${event.amount} in taxes!`,
-        loudSoundTroll: `🔊 ${event.from} trolled ${event.targetName} with a loud sound!`,
-        scramble: `🌀 ${event.targetName}'s controls were scrambled!`,
-        jumpscare: `👻 ${event.from} triggered a jumpscare!`
-    };
-
-    if (event.type === 'scramble' && event.target === socket.id) {
-        const nav = document.getElementById('emoji-nav');
-        if (nav) {
-            nav.style.flexDirection = nav.style.flexDirection === 'row-reverse' ? 'row' : 'row-reverse';
-            setTimeout(() => { nav.style.flexDirection = 'row'; }, 10000);
-        }
-    }
-
-    if (event.type === 'jumpscare' && event.target === socket.id) {
-        triggerJumpscare();
-    }
-
-    if (event.type === 'loudSoundTroll' && event.target === socket.id) {
-        const trollOverlay = document.getElementById('troll-overlay');
-        const trollImage = document.getElementById('troll-image');
-        const trollSound = document.getElementById('troll-sound');
-
-        if (trollOverlay && trollImage && trollSound) {
-            trollImage.src = event.imageUrl;
-            trollSound.src = event.soundUrl;
-            trollOverlay.style.display = 'flex';
-            trollSound.play();
-            setTimeout(() => {
-                trollOverlay.style.display = 'none';
-            }, 3000);
-        }
-    }
-    if (messages[event.type]) showNotification(messages[event.type]);
-});
-
-function showNotification(msg) {
-    const notif = document.createElement('div');
-    notif.className = 'troll-notification';
-    notif.innerText = msg;
-    document.body.appendChild(notif);
-    notif.style.opacity = '1';
-    
-    setTimeout(() => {
-        notif.style.opacity = '0';
-        setTimeout(() => notif.remove(), 500);
-    }, 2500);
-}
-
-// 7. Lucky Hit
-socket.on('luckyHit', ({ playerId, points }) => {
-    console.log(`Lucky hit! +${points} bonus points`);
-    playLuckySound();
-});
-
-// 8. Frozen Message
-socket.on('frozenMessage', ({ remaining }) => {
-    showNotification(`❄️ You are frozen! ${remaining}s left`);
-});
-
-// 9. Update Timer
-socket.on('updateTimer', (timeLeft) => {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    document.getElementById('timer').innerText = 
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-});
-
-// 10. Random Event
-socket.on('randomEvent', (event) => {
-    showNotification(`✨ Random Event: ${event.message}`);
-});
-
-// 11. Game Over
-socket.on('gameOver', (players) => {
-    playGameOverSound();
-    gameScreen.style.display = 'none';
-    gameOverScreen.style.display = 'flex';
-
-    const resultsUI = document.getElementById('final-results');
-    const playersArray = Object.values(players).sort((a, b) => b.score - a.score);
-
-    playersArray.forEach((p, index) => {
-        if (p.id === socket.id) {
-            const resultHeader = document.createElement('h2');
-            if (index === 0) {
-                resultHeader.innerText = "🏆 You Win! 🏆";
-            } else {
-                resultHeader.innerText = "Better luck next time!";
-            }
-            gameOverScreen.prepend(resultHeader);
-        }
-        const li = document.createElement('li');
-        li.innerHTML = `<strong>#${index + 1} ${p.name}</strong> - Final Score: ${p.score}`;
-        resultsUI.appendChild(li);
-    });
-});
-
-// 5. Update Game State (Leaderboard & Score)
-socket.on('gameState', (players) => {
-    const leaderboardUI = document.getElementById('leaderboard');
-    const targetSelect = document.getElementById('troll-target-select');
-    const currentTarget = targetSelect.value;
-    
-    leaderboardUI.innerHTML = '';
-    targetSelect.innerHTML = '<option value="random">Random Opponent</option>';
-
-    const playersArray = Object.values(players);
-    playersArray.sort((a, b) => b.score - a.score);
-
-    playersArray.forEach((p, index) => {
-        const avatarHtml = p.avatar ? `<img src="${p.avatar}" class="player-avatar-small" alt="avatar">` : '';
+        const avatarHtml = p.avatar ? `<img src="${p.avatar}" class="player-avatar-small" alt="avatar" style="width:20px;height:20px;border-radius:50%;">` : '';
         const teamTag = p.team ? `<span class="team-tag tag-${p.team}">${p.team.toUpperCase()}</span> ` : '';
         
         const li = document.createElement('li');
@@ -501,11 +339,9 @@ socket.on('gameState', (players) => {
             targetSelect.appendChild(opt);
         }
 
-        if (p.id === socket.id) { // Rely solely on socket.id for current player's UI
-            // Apply cursor and avatar for current player
+        if (p.id === socket.id) {
             applyCursor(p.cursor);
-            if (myAvatar) myAvatar.src = p.avatar;
-
+            
             document.getElementById('my-score').innerText = `Score: ${p.score}`;
             document.getElementById('my-multiplier').innerText = `Multiplier: x${p.multiplier}`;
             document.getElementById('my-clickPower').innerText = `Click Power: x${p.clickPower}`;
@@ -514,8 +350,7 @@ socket.on('gameState', (players) => {
             
             playerItems = p.items;
             updateShopUI();
-            
-            // Gray out buttons if can't afford
+
             const allButtons = document.querySelectorAll('.shop-btn');
             allButtons.forEach(btn => {
                 const itemId = btn.dataset.item;
@@ -536,6 +371,8 @@ socket.on('gameState', (players) => {
 // 6. Troll Events
 socket.on('trollEvent', (event) => {
     if (!event) return;
+    playTrollSound();
+
     const messages = {
         steal: `🔥 ${event.from} stole ${event.amount} pts from ${event.to}!`,
         freeze: `❄️ ${event.target} is frozen for ${event.duration} sec!`,
@@ -544,17 +381,20 @@ socket.on('trollEvent', (event) => {
         spam: `😂 ${event.target} is being spammed with ${event.emoji}!`,
         tax: `💰 ${event.from} collected ${event.amount} in taxes!`,
         loudSoundTroll: `🔊 ${event.from} trolled ${event.targetName} with a loud sound!`,
-        scramble: `🌀 ${event.targetName}'s controls were scrambled!`
+        scramble: `🌀 ${event.targetName}'s controls were scrambled!`,
+        jumpscare: `👻 ${event.from} triggered a jumpscare!`
     };
 
-    // If I am the target of a scramble
     if (event.type === 'scramble' && event.target === socket.id) {
         const nav = document.getElementById('emoji-nav');
-        nav.style.flexDirection = nav.style.flexDirection === 'row-reverse' ? 'row' : 'row-reverse';
+        if (nav) nav.style.flexDirection = nav.style.flexDirection === 'row-reverse' ? 'row' : 'row-reverse';
         setTimeout(() => { nav.style.flexDirection = 'row'; }, 10000);
     }
 
-    // Handle loud sound troll
+    if (event.type === 'jumpscare' && event.target === socket.id) {
+        triggerJumpscare();
+    }
+
     if (event.type === 'loudSoundTroll' && event.target === socket.id) {
         const trollOverlay = document.getElementById('troll-overlay');
         const trollImage = document.getElementById('troll-image');
@@ -578,14 +418,14 @@ function showNotification(msg) {
     notif.className = 'troll-notification';
     notif.innerText = msg;
     document.body.appendChild(notif);
-    notif.style.opacity = '1'; // Ensure it's visible initially
+    notif.style.opacity = '1';
     
-    // Smooth fade out
     setTimeout(() => {
         notif.style.opacity = '0';
         setTimeout(() => notif.remove(), 500);
     }, 2500);
 }
+
 
 function applyCursor(cursorStyle) {
     if (cursorStyle) {
@@ -595,6 +435,7 @@ function applyCursor(cursorStyle) {
 // 7. Lucky Hit
 socket.on('luckyHit', ({ playerId, points }) => {
     console.log(`Lucky hit! +${points} bonus points`);
+    playLuckySound();
 });
 
 // 8. Frozen Message
@@ -617,10 +458,12 @@ socket.on('randomEvent', (event) => {
 
 // 10. Game Over
 socket.on('gameOver', (players) => {
+    playGameOverSound();
     gameScreen.style.display = 'none';
     gameOverScreen.style.display = 'flex';
 
     const resultsUI = document.getElementById('final-results');
+    resultsUI.innerHTML = ''; // Clear previous results
     const playersArray = Object.values(players).sort((a, b) => b.score - a.score);
 
     playersArray.forEach((p, index) => {
