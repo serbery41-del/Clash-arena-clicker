@@ -89,11 +89,7 @@ io.on('connection', (socket) => {
         }, 1000);
 
         io.to(code).emit('gameState', rooms[code].players);
-        io.to(code).emit('roomUpdate', { 
-            players: rooms[code].players, 
-            hostId: rooms[code].hostId,
-            gameActive: rooms[code].gameActive // Include gameActive status
-        });
+        io.to(code).emit('roomUpdate', { players: rooms[code].players, hostId: rooms[code].hostId });
         io.to(code).emit('shopItems', SHOP_ITEMS);
         io.to(code).emit('playerJoined', { name: playerName, players: Object.keys(rooms[code].players) });
     });
@@ -121,13 +117,6 @@ io.on('connection', (socket) => {
         const room = rooms[socket.roomCode];
         if (room && socket.id === room.hostId && !room.gameActive) {
             room.gameActive = true;
-            io.to(socket.roomCode).emit('gameStarted');
-        } else if (room && room.gameActive) {
-            // If a non-host or a host trying to start an already active game,
-            // just ensure they get the gameStarted event if they somehow missed it.
-            // This handles late joiners who need to transition from lobby to game screen.
-            // This is now triggered by the client's roomUpdate handler.
-            // We can directly emit to the specific socket here if needed, but client logic handles it.
             io.to(socket.roomCode).emit('gameStarted');
         }
     });
@@ -166,29 +155,9 @@ io.on('connection', (socket) => {
         io.to(socket.roomCode).emit('gameState', room.players);
     });
 
-    socket.on('disconnect', () => {
+    socket.on('disconnect', () => { // Use a common handler for disconnect and leaveRoom
         if (socket.roomCode && rooms[socket.roomCode]) {
-            const room = rooms[socket.roomCode];
-            delete room.players[socket.id];
-            
-            if (room.timers[socket.id]) {
-                clearInterval(room.timers[socket.id]);
-            }
-            
-            io.to(socket.roomCode).emit('gameState', room.players);
-            
-            // Clean up empty rooms
-            if (Object.keys(room.players).length === 0) {
-                clearInterval(room.timers.gameTimer);
-                delete rooms[socket.roomCode];
-            } else if (socket.id === room.hostId) {
-                // Reassign host
-                room.hostId = Object.keys(room.players)[0];
-                io.to(socket.roomCode).emit('roomUpdate', { 
-                    players: room.players, 
-                    hostId: room.hostId 
-                });
-            }
+            handlePlayerDisconnect(socket, socket.roomCode);
         }
         console.log('Player disconnected:', socket.id);
     });
@@ -213,6 +182,32 @@ io.on('connection', (socket) => {
             socket.emit('error', 'Lobby not found.');
         }
     });
+});
+
+function handlePlayerDisconnect(socket, roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    delete room.players[socket.id];
+    
+    if (room.timers[socket.id]) {
+        clearInterval(room.timers[socket.id]);
+        delete room.timers[socket.id]; // Remove the specific player's timer
+    }
+    
+    io.to(roomCode).emit('gameState', room.players);
+    
+    // Clean up empty rooms
+    if (Object.keys(room.players).length === 0) {
+        clearInterval(room.timers.gameTimer);
+        delete rooms[roomCode];
+    } else if (socket.id === room.hostId) {
+        // Reassign host
+        room.hostId = Object.keys(room.players)[0];
+        io.to(roomCode).emit('roomUpdate', { 
+            players: room.players, 
+            hostId: room.hostId, gameActive: room.gameActive });
+    }
 });
 
 function initializeRoom(code, durationInSeconds, maxPlayers) {

@@ -51,13 +51,24 @@ startBtn.addEventListener('pointerdown', () => {
     socket.emit('startGame');
 });
 
-socket.on('roomUpdate', ({ players, hostId }) => {
+socket.on('roomUpdate', ({ players, hostId, gameActive }) => {
     isHost = socket.id === hostId;
     const playerCount = Object.keys(players).length;
 
     if (isHost) {
         startBtn.style.display = 'block';
         startBtn.innerText = "Start Game";
+    } else {
+        startBtn.style.display = 'none'; // Hide start button for non-hosts
+    }
+    
+    // If the game is already active when a player joins, transition them to the game screen
+    if (gameActive) {
+        lobbyScreen.style.display = 'none';
+        gameScreen.style.display = 'flex';
+        // The server will send 'gameState' and 'shopItems' shortly after 'roomUpdate'
+        // which will populate the game screen correctly.
+        document.getElementById('current-room').innerText = document.getElementById('roomCode').value.trim().toUpperCase();
     }
     
     document.getElementById('lobby-status').innerText = `${playerCount} players in lobby`;
@@ -66,6 +77,19 @@ socket.on('roomUpdate', ({ players, hostId }) => {
 socket.on('gameStarted', () => {
     lobbyScreen.style.display = 'none';
     gameScreen.style.display = 'flex';
+});
+
+// Leave Room logic
+const leaveBtn = document.getElementById('leaveBtn');
+if (leaveBtn) {
+    leaveBtn.addEventListener('pointerdown', () => {
+        socket.emit('leaveRoom');
+    });
+}
+
+socket.on('leftRoom', () => {
+    gameScreen.style.display = 'none';
+    lobbyScreen.style.display = 'flex';
 });
 
 // 2. Click the Gem
@@ -209,6 +233,7 @@ function showNotification(msg) {
     notif.className = 'troll-notification';
     notif.innerText = msg;
     document.body.appendChild(notif);
+    notif.style.opacity = '1'; // Ensure it's visible initially
     
     // Smooth fade out
     setTimeout(() => {

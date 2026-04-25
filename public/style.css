@@ -182,6 +182,10 @@ h3 { text-align: center; color: var(--accent); margin-top: 0; border-bottom: 1px
     margin: 5px;
     border-radius: 8px;
     width: 100%;
+    cursor: pointer; /* Indicate it's clickable */
+    outline: none; /* Remove outline on focus */
+    -webkit-tap-highlight-color: transparent; /* Remove blue highlight on mobile */
+    -webkit-touch-callout: none; /* Disable callout on long tap */
     box-sizing: border-box;
 }
 
@@ -194,6 +198,12 @@ h3 { text-align: center; color: var(--accent); margin-top: 0; border-bottom: 1px
     border-radius: 10px;
     font-weight: bold;
     border: 1px solid var(--secondary);
+}
+
+.primary-btn.small-btn {
+    padding: 8px 15px;
+    font-size: 0.9rem;
+    margin: 5px;
 }
 
 /* Mobile Responsiveness */
@@ -209,8 +219,8 @@ h3 { text-align: center; color: var(--accent); margin-top: 0; border-bottom: 1px
     #game-screen {
         flex-direction: column; /* Stack panels vertically */
         overflow-y: auto; /* Allow scrolling if content overflows vertically */
-        height: 100vh; /* Ensure game screen takes full height */
-    }
+        height: 100%; /* Allow content to define height, but scroll if needed */
+    } 
 
     #left-panel, #right-panel {
         width: 100%; /* Take full width */
@@ -235,6 +245,11 @@ h3 { text-align: center; color: var(--accent); margin-top: 0; border-bottom: 1px
         order: 2; /* Keep in middle */
         width: 100%;
         min-height: 30vh; /* Ensure click area has enough space */
+    }
+
+    #game-content header {
+        flex-wrap: wrap; /* Allow header items to wrap on small screens */
+        justify-content: center;
     }
 }
 
